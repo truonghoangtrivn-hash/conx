@@ -97,7 +97,7 @@
                     <div class="bg-white p-4 rounded shadow-sm border border-blue-200 mb-6">
                         <label class="block text-sm font-semibold text-blue-700 mb-2">Dán văn bản tổng hợp vào đây (Phần mềm tự phân tích, tự lưu và tự xóa khung):</label>
                         <textarea id="data-input" rows="4" 
-                            class="w-full border-2 border-dashed border-blue-300 p-3 rounded text-sm font-mono focus:outline-none focus:border-blue-500 focus:bg-blue-50 transition-colors resize-none" 
+                            class="w-full border-2 border-dashed border-blue-300 p-3 rounded text-sm font-mono focus:outline-none focus:border-blue-50 focus:bg-blue-50 transition-colors resize-none" 
                             placeholder="Dán (Ctrl+V) dữ liệu ONCARRIAGE CUSTOMER SUMMARY vào đây..."></textarea>
                     </div>
 
@@ -117,14 +117,14 @@
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // CẤU HÌNH FIREBASE CỦA BẠN
+        // CẤU HÌNH FIREBASE MỚI CỦA BẠN
         const firebaseConfig = {
-            apiKey: "AIzaSyC3GLTX440Vi5mVTAcNyCzMxu08qoO6N3s",
-            authDomain: "conxasoc-132bd.firebaseapp.com",
-            projectId: "conxasoc-132bd",
-            storageBucket: "conxasoc-132bd.firebasestorage.app",
-            messagingSenderId: "954408888010",
-            appId: "1:954408888010:web:d8292005d180835b427633"
+            apiKey: "AIzaSyCz346rY9fXDixYI7i_R4EXms13Mrtmqq0",
+            authDomain: "conxasoc-62823.firebaseapp.com",
+            projectId: "conxasoc-62823",
+            storageBucket: "conxasoc-62823.firebasestorage.app",
+            messagingSenderId: "190029549849",
+            appId: "1:190029549849:web:138c3f7e1bb9efe6e8b588"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -433,7 +433,7 @@ ${reportLines.join('\n')}</div>
                     listDiv.appendChild(div);
                 });
             } catch (err) {
-                listDiv.innerHTML = '<div class="text-center text-red-500 text-sm py-4">Lỗi tải dữ liệu.</div>';
+                listDiv.innerHTML = '<div class="text-center text-red-500 text-sm py-4">Lỗi tải dữ liệu. (Vui lòng kiểm tra lại Rule Firebase)</div>';
             }
         }
 
