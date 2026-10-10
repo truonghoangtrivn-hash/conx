@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Phân Tích Chuyến Bay - VN</title>
+    <title>Hệ Thống Phân Tích Chuyến Bay & Hồ Sơ - VN</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -19,10 +19,14 @@
         
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
         .shake-err { animation: shake 0.3s; border-color: red; background-color: #fee2e2;}
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 h-screen overflow-hidden flex flex-col">
 
+    <!-- MÀN HÌNH KHÓA -->
     <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-50 flex items-center justify-center p-4">
         <div class="bg-white p-6 md:p-8 rounded-lg shadow-2xl w-full max-w-sm text-center">
             <div class="text-4xl text-blue-600 mb-4"><i class="fa-solid fa-plane-lock"></i></div>
@@ -35,10 +39,12 @@
         </div>
     </div>
 
-    <div id="main-app" class="hidden flex-col h-full w-full">
-        <header class="hidden md:flex bg-white shadow z-10 p-4 justify-between items-center">
+    <!-- ỨNG DỤNG CHÍNH -->
+    <div id="main-app" class="hidden flex-col h-full w-full min-h-0">
+        <!-- Header -->
+        <header class="hidden md:flex bg-white shadow z-10 p-4 justify-between items-center shrink-0">
             <div class="flex-1 truncate pr-2">
-                <h1 class="text-2xl font-bold text-gray-800 truncate">Trích xuất Oncarriage</h1>
+                <h1 class="text-2xl font-bold text-gray-800 truncate">Hệ Thống Quản Lý Dịch Vụ Chuyến Bay</h1>
                 <p class="text-sm text-gray-500 truncate" id="db-status">Đang kết nối cơ sở dữ liệu...</p>
             </div>
             <div class="flex items-center gap-2">
@@ -51,7 +57,18 @@
             </div>
         </header>
 
-        <div class="flex flex-col md:flex-row flex-1 overflow-hidden h-full">
+        <!-- THANH ĐIỀU HƯỚNG TABS -->
+        <div class="bg-white border-b px-2 md:px-6 flex gap-2 md:gap-6 text-sm md:text-base z-10 shadow-sm shrink-0">
+            <button onclick="switchTab('oncarriage')" id="tab-oncarriage" class="py-2 md:py-3 px-2 md:px-4 font-bold text-blue-600 border-b-2 border-blue-600 transition-colors">
+                <i class="fa-solid fa-plane-arrival mr-1"></i> Khách Nối Chuyến
+            </button>
+            <button onclick="switchTab('departure')" id="tab-departure" class="py-2 md:py-3 px-2 md:px-4 font-bold text-gray-500 hover:text-blue-600 transition-colors border-b-2 border-transparent">
+                <i class="fa-solid fa-folder-open mr-1"></i> Hồ Sơ
+            </button>
+        </div>
+
+        <!-- KHUNG 1: TRÍCH XUẤT ONCARRIAGE -->
+        <div id="view-oncarriage" class="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0 w-full">
             <main class="w-full flex-1 md:h-full overflow-y-auto p-2 md:p-6 bg-gray-100 flex flex-col items-center order-1 md:order-2">
                 <div class="w-full max-w-5xl h-full flex flex-col">
                     <div class="bg-white p-2 md:p-4 rounded shadow-sm border border-blue-200 mb-2 md:mb-6 shrink-0">
@@ -68,15 +85,16 @@
             </main>
 
             <aside class="w-full h-1/2 md:h-full md:w-1/4 md:min-w-[280px] bg-white border-t-2 md:border-r flex flex-col shadow-inner order-2 md:order-1 border-gray-200 shrink-0">
-                <div class="p-2 md:p-4 bg-gray-50 border-b font-bold text-gray-700 flex justify-between items-center text-sm md:text-base">
-                    <span><i class="fa-solid fa-clock-rotate-left mr-2"></i>Lịch sử lưu trữ</span>
-                    <div class="flex items-center gap-2 md:hidden">
-                        <button class="refresh-btn bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded shadow text-xs font-semibold">
-                            <i class="fa-solid fa-rotate-right"></i>
+                <div class="p-2 md:p-4 bg-gray-50 border-b font-bold text-gray-700 flex justify-between items-center text-sm md:text-base shrink-0">
+                    <span><i class="fa-solid fa-clock-rotate-left mr-2"></i>Lịch sử Oncarriage</span>
+                    <div class="flex items-center gap-1 md:gap-2">
+                        <button onclick="deleteAllReports()" class="bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded shadow text-[10px] md:text-xs font-semibold transition-colors" title="Xóa toàn bộ">
+                            <i class="fa-solid fa-trash-can md:mr-1"></i><span class="hidden md:inline">Xóa tất cả</span>
                         </button>
-                        <button class="logout-btn bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded shadow text-xs font-semibold">
-                            <i class="fa-solid fa-right-from-bracket"></i> Thoát
-                        </button>
+                        <div class="flex items-center gap-1 md:hidden">
+                            <button class="refresh-btn bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded shadow text-[10px] font-semibold"><i class="fa-solid fa-rotate-right"></i></button>
+                            <button class="logout-btn bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded shadow text-[10px] font-semibold"><i class="fa-solid fa-right-from-bracket"></i></button>
+                        </div>
                     </div>
                 </div>
                 <div id="history-list" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50">
@@ -84,12 +102,130 @@
                 </div>
             </aside>
         </div>
+
+        <!-- KHUNG 2: HỒ SƠ DEPARTURE -->
+        <div id="view-departure" class="hidden flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden bg-gray-100 p-2 md:p-4 gap-2 md:gap-4 w-full min-h-0">
+            
+            <!-- Cột Nhập Hồ Sơ (Đã tối ưu không gian) -->
+            <div class="w-full md:w-1/3 bg-white p-3 md:p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col shrink-0 min-h-0 md:h-full overflow-y-visible md:overflow-y-auto">
+                <h2 class="font-bold text-lg md:text-xl text-blue-800 mb-3 border-b pb-2 shrink-0"><i class="fa-solid fa-file-pen mr-2"></i>Nhập Hồ Sơ Mới</h2>
+                
+                <form id="form-departure" class="space-y-3 shrink-0 pb-2 flex flex-col">
+                    
+                    <!-- GỘP DÒNG: NGÀY THÁNG VÀ SỐ HIỆU CHUYẾN BAY (Tiết kiệm chiều cao) -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[13px] font-semibold text-gray-700 mb-1">Ngày tháng <span class="text-red-500">*</span></label>
+                            <input type="date" id="dep-date" required class="w-full border border-gray-300 p-1.5 md:p-2 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm">
+                        </div>
+
+                        <div>
+                            <label class="block text-[13px] font-semibold text-gray-700 mb-1">SHCB</label>
+                            <input type="text" id="dep-flight" placeholder="VD: 214" class="w-full border border-gray-300 p-1.5 md:p-2 rounded uppercase focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- LỰA CHỌN QUỐC NỘI HAY QUỐC TẾ BẮT BUỘC -->
+                    <div>
+                        <label class="block text-[13px] font-semibold text-gray-700 mb-1.5">Chặng bay <span class="text-red-500">*</span></label>
+                        <div class="grid grid-cols-2 gap-2" id="dep-sector-container">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-sector" value="QN" required class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] md:text-xs font-bold peer-checked:bg-indigo-100 peer-checked:border-indigo-500 peer-checked:text-indigo-700 bg-white hover:bg-gray-50 transition-colors">QUỐC NỘI (QN)</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-sector" value="QT" required class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] md:text-xs font-bold peer-checked:bg-purple-100 peer-checked:border-purple-500 peer-checked:text-purple-700 bg-white hover:bg-gray-50 transition-colors">QUỐC TẾ (QT)</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[13px] font-semibold text-gray-700 mb-1.5">Loại hồ sơ</label>
+                        <div class="grid grid-cols-3 lg:grid-cols-4 gap-1.5 md:gap-2" id="dep-type-container">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="ĂN" class="peer hidden" checked>
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-blue-100 peer-checked:border-blue-500 peer-checked:text-blue-700 bg-white hover:bg-gray-50 transition-colors">ĂN</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="UỐNG" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-blue-100 peer-checked:border-blue-500 peer-checked:text-blue-700 bg-white hover:bg-gray-50 transition-colors">UỐNG</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="KHÁCH SẠN" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-blue-100 peer-checked:border-blue-500 peer-checked:text-blue-700 bg-white hover:bg-gray-50 transition-colors">KHÁCH SẠN</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="TAXI" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-blue-100 peer-checked:border-blue-500 peer-checked:text-blue-700 bg-white hover:bg-gray-50 transition-colors">TAXI</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="DOWNGRADE" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-blue-100 peer-checked:border-blue-500 peer-checked:text-blue-700 bg-white hover:bg-gray-50 transition-colors">DOWNGRADE</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="OFFLOAD" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-blue-100 peer-checked:border-blue-500 peer-checked:text-blue-700 bg-white hover:bg-gray-50 transition-colors">OFFLOAD</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="DAMAGE" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-red-100 peer-checked:border-red-500 peer-checked:text-red-700 bg-white hover:bg-gray-50 transition-colors text-red-600">DAMAGE</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="LATE" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-red-100 peer-checked:border-red-500 peer-checked:text-red-700 bg-white hover:bg-gray-50 transition-colors text-red-600">LATE</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="dep-type" value="LSC" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-red-100 peer-checked:border-red-500 peer-checked:text-red-700 bg-white hover:bg-gray-50 transition-colors text-red-600">LSC</div>
+                            </label>
+                            <label class="cursor-pointer col-span-3 lg:col-span-1">
+                                <input type="radio" name="dep-type" value="KHÁC" class="peer hidden">
+                                <div class="border rounded py-1.5 px-1 text-center text-[11px] font-bold uppercase peer-checked:bg-blue-100 peer-checked:border-blue-500 peer-checked:text-blue-700 bg-white hover:bg-gray-50 transition-colors">KHÁC...</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Ô Extra đã được làm mỏng lại -->
+                    <div id="dep-extra-div" class="hidden bg-blue-50 p-2 md:p-3 rounded border border-blue-100 mt-0">
+                        <label id="dep-extra-label" class="block text-xs font-semibold text-blue-800 mb-1">Số hồ sơ <span class="text-red-500">*</span></label>
+                        <input type="text" id="dep-extra" placeholder="Nhập số hồ sơ..." class="w-full border border-gray-300 p-1.5 md:p-2 rounded uppercase focus:outline-none focus:border-blue-500 text-sm">
+                    </div>
+
+                    <!-- Khu vực nút bấm cũng mỏng hơn -->
+                    <div class="flex gap-2 mt-auto pt-2">
+                        <button type="submit" id="btn-submit-dep" class="flex-1 bg-blue-600 text-white font-bold py-2 md:py-2.5 rounded-lg shadow hover:bg-blue-700 transition-colors flex justify-center items-center text-sm md:text-base">
+                            <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Lưu Hồ Sơ
+                        </button>
+                        <button type="button" id="btn-cancel-edit" onclick="cancelEditDep()" class="hidden bg-gray-300 text-gray-700 font-bold py-2 md:py-2.5 px-4 rounded-lg shadow hover:bg-gray-400 transition-colors" title="Hủy chỉnh sửa">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Cột Danh Sách Hồ Sơ -->
+            <div class="w-full md:w-2/3 bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col flex-1 min-h-[400px] md:min-h-0 md:h-full overflow-hidden mt-4 md:mt-0">
+                <div class="flex justify-between items-center mb-3 border-b pb-2 shrink-0">
+                    <h2 class="font-bold text-lg md:text-xl text-blue-800"><i class="fa-solid fa-list-check mr-2"></i>Danh Sách Cần Xử Lý</h2>
+                    <button class="md:hidden refresh-btn bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded shadow text-xs font-semibold">
+                        <i class="fa-solid fa-rotate-right"></i> Làm mới
+                    </button>
+                </div>
+                
+                <div id="departure-list" class="flex-1 overflow-y-auto space-y-2.5 no-scrollbar pr-1">
+                    <div class="text-center text-gray-400 mt-10 italic">Đang tải danh sách hồ sơ...</div>
+                </div>
+            </div>
+
+        </div>
+
     </div>
 
     <!-- SCRIPT XỬ LÝ -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp } 
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp, updateDoc } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -124,13 +260,10 @@
             mainApp.classList.remove('flex');
             mainApp.classList.add('hidden');
             loginOverlay.classList.remove('hidden');
-            
             let statusEl = document.getElementById('login-status');
             statusEl.innerText = "Đã tự động đăng xuất do không hoạt động (15p).";
             statusEl.classList.add('text-red-500');
-            
-            passInput.value = '';
-            passInput.focus();
+            passInput.value = ''; passInput.focus();
         }
 
         function resetInactivityTimer() {
@@ -148,9 +281,8 @@
 
         if (sessionStorage.getItem('auth_chuyenbay') === 'true') {
             loginOverlay.classList.add('hidden');
-            mainApp.classList.remove('hidden'); 
-            mainApp.classList.add('flex');
-            if(db) loadHistory();
+            mainApp.classList.remove('hidden'); mainApp.classList.add('flex');
+            if(db) { loadHistory(); loadDepartureFiles(); }
             resetInactivityTimer();
         } else {
             passInput.focus();
@@ -161,9 +293,8 @@
                 if (this.value === PIN) {
                     sessionStorage.setItem('auth_chuyenbay', 'true');
                     loginOverlay.classList.add('hidden');
-                    mainApp.classList.remove('hidden'); 
-                    mainApp.classList.add('flex');
-                    if(db) loadHistory();
+                    mainApp.classList.remove('hidden'); mainApp.classList.add('flex');
+                    if(db) { loadHistory(); loadDepartureFiles(); }
                     this.value = ''; 
                     document.getElementById('login-status').innerText = "Hệ thống tự động đăng nhập khi đủ 6 số.";
                     document.getElementById('login-status').classList.remove('text-red-500');
@@ -172,11 +303,7 @@
                     this.classList.add('shake-err');
                     document.getElementById('login-status').innerText = "Sai mã PIN, vui lòng thử lại!";
                     document.getElementById('login-status').classList.add('text-red-500');
-                    setTimeout(() => {
-                        this.classList.remove('shake-err');
-                        this.value = ''; 
-                        this.focus();
-                    }, 500);
+                    setTimeout(() => { this.classList.remove('shake-err'); this.value = ''; this.focus(); }, 500);
                 }
             } else {
                 document.getElementById('login-status').innerText = "Hệ thống tự động đăng nhập khi đủ 6 số.";
@@ -188,8 +315,7 @@
             btn.addEventListener('click', () => {
                 clearTimeout(inactivityTimer); 
                 sessionStorage.removeItem('auth_chuyenbay');
-                mainApp.classList.remove('flex');
-                mainApp.classList.add('hidden');
+                mainApp.classList.remove('flex'); mainApp.classList.add('hidden');
                 loginOverlay.classList.remove('hidden');
                 document.getElementById('login-status').innerText = "Hệ thống tự động đăng nhập khi đủ 6 số.";
                 document.getElementById('login-status').classList.remove('text-red-500');
@@ -200,16 +326,335 @@
         document.querySelectorAll('.refresh-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 let icon = btn.querySelector('i');
-                icon.classList.add('fa-spin');
-                setTimeout(() => icon.classList.remove('fa-spin'), 500);
-
+                if(icon) { icon.classList.add('fa-spin'); setTimeout(() => icon.classList.remove('fa-spin'), 500); }
                 document.getElementById('data-input').value = '';
                 document.getElementById('report-container').innerHTML = '<div class="text-center text-gray-400 mt-10 md:mt-20 italic text-sm md:text-base">Đã làm mới. Chưa có dữ liệu hiển thị.</div>';
-                
-                if(db) loadHistory();
+                if(db) { loadHistory(); loadDepartureFiles(); }
             });
         });
 
+        window.switchTab = function(tabName) {
+            const tOnc = document.getElementById('tab-oncarriage');
+            const tDep = document.getElementById('tab-departure');
+            const vOnc = document.getElementById('view-oncarriage');
+            const vDep = document.getElementById('view-departure');
+
+            if (tabName === 'oncarriage') {
+                vOnc.classList.remove('hidden'); vOnc.classList.add('flex');
+                vDep.classList.add('hidden'); vDep.classList.remove('flex');
+                
+                tOnc.classList.add('text-blue-600', 'border-blue-600'); tOnc.classList.remove('text-gray-500', 'border-transparent');
+                tDep.classList.add('text-gray-500', 'border-transparent'); tDep.classList.remove('text-blue-600', 'border-blue-600');
+            } else {
+                vOnc.classList.add('hidden'); vOnc.classList.remove('flex');
+                vDep.classList.remove('hidden'); vDep.classList.add('flex');
+                
+                tDep.classList.add('text-blue-600', 'border-blue-600'); tDep.classList.remove('text-gray-500', 'border-transparent');
+                tOnc.classList.add('text-gray-500', 'border-transparent'); tOnc.classList.remove('text-blue-600', 'border-blue-600');
+            }
+        }
+
+
+        // =========================================================
+        // MÔ-ĐUN 2: HỒ SƠ DEPARTURE
+        // =========================================================
+        
+        window.depDocs = []; 
+        window.editingDepId = null;
+
+        const setDateToday = () => {
+            const nowLocal = new Date();
+            const offset = nowLocal.getTimezoneOffset() * 60000;
+            const localISODate = (new Date(nowLocal - offset)).toISOString().slice(0,10);
+            document.getElementById('dep-date').value = localISODate;
+        };
+        setDateToday();
+
+        const depFlightInput = document.getElementById('dep-flight');
+        depFlightInput.addEventListener('blur', function() {
+            let val = this.value.toUpperCase().trim();
+            if (/^\d+$/.test(val)) {
+                this.value = "VN" + val;
+            } else {
+                this.value = val;
+            }
+        });
+
+        const depExtraDiv = document.getElementById('dep-extra-div');
+        const depExtraLabel = document.getElementById('dep-extra-label');
+        const depExtra = document.getElementById('dep-extra');
+        
+        const depRadios = document.querySelectorAll('input[name="dep-type"]');
+        depRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                const val = this.value;
+                if (['DAMAGE', 'LATE', 'LSC'].includes(val)) {
+                    depExtraDiv.classList.remove('hidden');
+                    depExtraLabel.innerHTML = 'Số hồ sơ <span class="text-red-500">*</span>';
+                    depExtra.placeholder = `Nhập số hồ sơ ${val}...`;
+                    depExtra.required = true;
+                } else if (val === 'KHÁC') {
+                    depExtraDiv.classList.remove('hidden');
+                    depExtraLabel.innerHTML = 'Nội dung hồ sơ <span class="text-red-500">*</span>';
+                    depExtra.placeholder = "Nhập chi tiết hồ sơ...";
+                    depExtra.required = true;
+                } else {
+                    depExtraDiv.classList.add('hidden');
+                    depExtra.required = false;
+                    depExtra.value = '';
+                }
+            });
+        });
+
+        window.cancelEditDep = function() {
+            window.editingDepId = null;
+            document.getElementById('form-departure').reset();
+            setDateToday();
+            document.querySelector('input[name="dep-type"][value="ĂN"]').checked = true;
+            document.querySelectorAll('input[name="dep-sector"]').forEach(r => r.checked = false);
+            document.querySelector('input[name="dep-type"]:checked').dispatchEvent(new Event('change'));
+            
+            let btnSubmit = document.getElementById('btn-submit-dep');
+            btnSubmit.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i> Lưu Hồ Sơ';
+            btnSubmit.classList.replace('bg-green-600', 'bg-blue-600');
+            btnSubmit.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
+            
+            document.getElementById('btn-cancel-edit').classList.add('hidden');
+        };
+
+        window.editDepFile = function(id) {
+            const item = window.depDocs.find(d => d.id === id);
+            if(!item) return;
+            
+            window.editingDepId = id;
+            
+            document.getElementById('dep-date').value = item.date || '';
+            
+            let displayFlight = (item.flight === "KHÔNG RÕ") ? "" : item.flight;
+            if(item.extra && item.flight === item.extra.toUpperCase()) displayFlight = ""; 
+            document.getElementById('dep-flight').value = displayFlight;
+            
+            let secRadios = document.querySelectorAll('input[name="dep-sector"]');
+            secRadios.forEach(r => r.checked = (r.value === item.sector));
+            
+            let typeRadios = document.querySelectorAll('input[name="dep-type"]');
+            typeRadios.forEach(r => r.checked = (r.value === item.type));
+            
+            document.querySelector('input[name="dep-type"]:checked').dispatchEvent(new Event('change'));
+            
+            document.getElementById('dep-extra').value = item.extra || '';
+            
+            let btnSubmit = document.getElementById('btn-submit-dep');
+            btnSubmit.innerHTML = '<i class="fa-solid fa-floppy-disk mr-2"></i> Cập Nhật';
+            btnSubmit.classList.replace('bg-blue-600', 'bg-green-600');
+            btnSubmit.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+            
+            document.getElementById('btn-cancel-edit').classList.remove('hidden');
+            
+            // Nếu dùng màn hình nhỏ thì tự cuộn lên, màn lớn thì thôi vì đã fit 100% height
+            if (window.innerWidth < 768) {
+                document.getElementById('view-departure').scrollTo({top: 0, behavior: 'smooth'});
+            }
+        };
+
+        document.getElementById('form-departure').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const date = document.getElementById('dep-date').value;
+            
+            let rawFlight = document.getElementById('dep-flight').value.toUpperCase().trim();
+            if (/^\d+$/.test(rawFlight)) rawFlight = "VN" + rawFlight;
+            
+            const checkedSector = document.querySelector('input[name="dep-sector"]:checked');
+            const sector = checkedSector ? checkedSector.value : "QN"; 
+            
+            const checkedRadio = document.querySelector('input[name="dep-type"]:checked');
+            const type = checkedRadio ? checkedRadio.value : "ĂN";
+            
+            let extra = document.getElementById('dep-extra').value.trim();
+            
+            let flight = rawFlight;
+            if (!flight) {
+                flight = extra ? extra.toUpperCase() : "KHÔNG RÕ";
+            }
+
+            try {
+                if (window.editingDepId) {
+                    await updateDoc(doc(db, 'departure_files', window.editingDepId), {
+                        date: date,
+                        flight: flight,
+                        sector: sector,
+                        type: type,
+                        extra: extra
+                    });
+                    
+                    window.cancelEditDep();
+                    loadDepartureFiles(); 
+                } else {
+                    let timeStr = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+
+                    await addDoc(collection(db, 'departure_files'), {
+                        date: date,
+                        flight: flight,
+                        sector: sector, 
+                        type: type,
+                        extra: extra,
+                        completed: false, 
+                        completedAt: null, 
+                        timestamp: serverTimestamp(),
+                        createdAt: timeStr
+                    });
+                    
+                    document.getElementById('dep-flight').value = '';
+                    document.querySelector('input[name="dep-type"][value="ĂN"]').checked = true;
+                    document.querySelectorAll('input[name="dep-sector"]').forEach(r => r.checked = false); 
+                    depExtraDiv.classList.add('hidden');
+                    depExtra.required = false;
+                    depExtra.value = '';
+                    setDateToday();
+
+                    loadDepartureFiles(); 
+
+                    const btn = this.querySelector('button[type="submit"]');
+                    let originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i> Đã Lưu!';
+                    btn.classList.replace('bg-blue-600', 'bg-green-600');
+                    btn.classList.replace('hover:bg-blue-700', 'hover:bg-green-700');
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.classList.replace('bg-green-600', 'bg-blue-600');
+                        btn.classList.replace('hover:bg-green-700', 'hover:bg-blue-700');
+                    }, 2000);
+                }
+            } catch (err) {
+                alert("Lỗi: " + err.message);
+            }
+        });
+
+        async function loadDepartureFiles() {
+            const listDiv = document.getElementById('departure-list');
+            try {
+                const q = query(collection(db, 'departure_files'), orderBy('timestamp', 'desc'));
+                const snapshot = await getDocs(q);
+                listDiv.innerHTML = '';
+                window.depDocs = []; 
+                
+                if(snapshot.empty) { 
+                    listDiv.innerHTML = '<div class="text-center text-gray-400 mt-10 italic">Chưa có hồ sơ nào được lưu.</div>'; 
+                    return; 
+                }
+
+                let uncompletedArr = [];
+                let completedArr = [];
+
+                snapshot.forEach(docSnap => {
+                    let d = docSnap.data();
+                    d.id = docSnap.id;
+                    window.depDocs.push(d); 
+                    
+                    if (d.completed) completedArr.push(d);
+                    else uncompletedArr.push(d);
+                });
+
+                completedArr.sort((a, b) => {
+                    let timeA = a.completedAt || 0;
+                    let timeB = b.completedAt || 0;
+                    return timeB - timeA; 
+                });
+
+                let allDocs = [...uncompletedArr, ...completedArr];
+
+                allDocs.forEach(d => {
+                    let div = document.createElement('div');
+                    
+                    let displayFlight = d.flight;
+                    if ((!displayFlight || displayFlight === "KHÔNG RÕ") && d.extra) {
+                        displayFlight = d.extra.toUpperCase();
+                    }
+
+                    let extraHTML = "";
+                    if (d.extra && d.extra.toUpperCase() !== displayFlight) {
+                        let isNumber = ['DAMAGE', 'LATE', 'LSC'].includes(d.type.toUpperCase());
+                        let labelTxt = isNumber ? "Số HS:" : "CT:";
+                        extraHTML = `<span class="bg-gray-100 border text-gray-700 px-2 py-0.5 rounded text-xs ml-2">${labelTxt} ${d.extra}</span>`;
+                    }
+
+                    let dArr = d.date.split('-');
+                    let dateDisplay = dArr.length === 3 ? `${dArr[2]}/${dArr[1]}/${dArr[0]}` : d.date;
+
+                    let isChecked = d.completed ? 'checked' : '';
+                    let textStyle = d.completed ? 'line-through text-gray-400' : 'text-blue-800';
+                    let bgStyle = d.completed ? 'bg-gray-50' : 'bg-white';
+                    let tagOpacity = d.completed ? 'opacity-50' : '';
+                    let colorTag = ['DAMAGE', 'LATE', 'LSC'].includes(d.type.toUpperCase()) ? 'text-red-700 border-red-200 bg-red-50' : 'text-blue-700 border-blue-200 bg-blue-100';
+
+                    let sectorTag = '';
+                    if (d.sector) {
+                        let secColor = d.sector === 'QN' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-purple-50 text-purple-700 border-purple-200';
+                        sectorTag = `<span class="border px-1.5 py-0.5 rounded text-[9px] md:text-[10px] font-bold shadow-sm ${secColor} shrink-0 ${tagOpacity}">${d.sector}</span>`;
+                    }
+
+                    div.className = `p-2 md:p-3 ${bgStyle} border border-gray-200 rounded-lg shadow-sm flex justify-between items-center hover:border-blue-300 transition-colors`;
+                    div.innerHTML = `
+                        <div class="flex items-center gap-2 md:gap-3 flex-1 overflow-hidden pr-2">
+                            <input type="checkbox" onchange="toggleDepComplete('${d.id}', this.checked)" ${isChecked} class="w-4 h-4 md:w-5 md:h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer shrink-0 transition-all">
+                            
+                            <div class="flex-1 overflow-hidden">
+                                <div class="flex items-center gap-1.5 md:gap-2 mb-1">
+                                    <span class="font-bold ${textStyle} text-sm md:text-base transition-all truncate">${displayFlight}</span>
+                                    ${sectorTag}
+                                    <span class="${colorTag} border px-2 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold shadow-sm uppercase shrink-0 ${tagOpacity}">${d.type}</span>
+                                </div>
+                                <div class="flex items-center text-[10px] md:text-xs text-gray-500 mt-1 truncate ${tagOpacity}">
+                                    <span><i class="fa-regular fa-calendar mr-1"></i>${dateDisplay}</span>
+                                    ${extraHTML}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end shrink-0 gap-1.5 md:gap-2">
+                            <span class="text-[9px] md:text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded border"><i class="fa-solid fa-clock mr-1"></i>${d.createdAt || ''}</span>
+                            <div class="flex items-center gap-3 mt-1">
+                                <button onclick="editDepFile('${d.id}')" class="text-gray-400 hover:text-blue-500 transition-colors" title="Sửa hồ sơ">
+                                    <i class="fa-solid fa-pen text-[10px] md:text-xs"></i>
+                                </button>
+                                <button onclick="deleteDepFile('${d.id}')" class="text-gray-400 hover:text-red-500 transition-colors" title="Xóa hồ sơ">
+                                    <i class="fa-solid fa-trash text-[10px] md:text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    listDiv.appendChild(div);
+                });
+            } catch (err) {
+                listDiv.innerHTML = '<div class="text-center text-red-500 text-sm py-4">Lỗi tải dữ liệu hồ sơ.</div>';
+            }
+        }
+
+        window.toggleDepComplete = async function(id, isCompleted) {
+            try {
+                let updateData = { completed: isCompleted };
+                if (isCompleted) {
+                    updateData.completedAt = Date.now();
+                } else {
+                    updateData.completedAt = null;
+                }
+
+                await updateDoc(doc(db, 'departure_files', id), updateData);
+                loadDepartureFiles(); 
+            } catch (err) {
+                alert("Lỗi khi cập nhật trạng thái: " + err.message);
+            }
+        }
+
+        window.deleteDepFile = async function(id) {
+            if(confirm("Xóa hồ sơ này khỏi hệ thống?")) {
+                await deleteDoc(doc(db, 'departure_files', id));
+                loadDepartureFiles(); 
+            }
+        }
+
+        // =========================================================
+        // MÔ-ĐUN 1: PHÂN TÍCH ONCARRIAGE (Giữ nguyên)
+        // =========================================================
         window.copyReport = function(btn) {
             let text = decodeURIComponent(btn.getAttribute('data-clipboard'));
             navigator.clipboard.writeText(text).then(() => {
@@ -222,9 +667,7 @@
                     btn.classList.replace('bg-green-600', 'bg-blue-500');
                     btn.classList.replace('hover:bg-green-700', 'hover:bg-blue-600');
                 }, 2000);
-            }).catch(err => {
-                alert("Lỗi khi copy: " + err);
-            });
+            }).catch(err => { alert("Lỗi khi copy: " + err); });
         }
 
         const dataInput = document.getElementById('data-input');
@@ -234,7 +677,6 @@
                 let parsedObj = parseData(text);
                 
                 if(parsedObj && parsedObj.inboundFlight !== "UNKNOWN") {
-                    
                     let now = new Date();
                     parsedObj.createdAt = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
 
@@ -244,9 +686,7 @@
                         try {
                             await addDoc(collection(db, 'reports'), { ...parsedObj, timestamp: serverTimestamp() });
                             loadHistory();
-                        } catch (error) {
-                            alert("Lỗi khi lưu lên Firebase: " + error.message);
-                        }
+                        } catch (error) { alert("Lỗi khi lưu lên Firebase: " + error.message); }
                     }
                 }
             }
@@ -264,10 +704,8 @@
             if (jfeFlightMatch) {
                 inboundFlight = jfeFlightMatch[1].toUpperCase();
                 inboundDate = jfeFlightMatch[2];
-                
                 let etaMatch = text.match(/Scheduled:\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})/);
                 if (etaMatch) etaTime = etaMatch[2];
-                
                 let routeMatch = text.match(/Airport:\s+([A-Z]{3})\s+([A-Z]{3})/);
                 if (routeMatch) routing = `${routeMatch[1]}-${routeMatch[2]}`;
             } else {
@@ -290,22 +728,16 @@
 
                 for(let i=0; i<lines.length; i++) {
                     let line = lines[i];
-                    
                     if (line.includes("|Connection") && line.includes("|ATD")) {
                         let cols = line.split("|").map(s => s.trim());
-                        conn_idx = cols.indexOf("Connection");
-                        std_idx = cols.indexOf("STD");
-                        time_idx = cols.indexOf("Time");
-                        bag_idx = cols.indexOf("Bags");
-                        dest_idx = cols.indexOf("Dest.");
-                        term_idx = cols.indexOf("Term.");
-                        gate_idx = cols.indexOf("Gate");
+                        conn_idx = cols.indexOf("Connection"); std_idx = cols.indexOf("STD");
+                        time_idx = cols.indexOf("Time"); bag_idx = cols.indexOf("Bags");
+                        dest_idx = cols.indexOf("Dest."); term_idx = cols.indexOf("Term."); gate_idx = cols.indexOf("Gate");
 
                         let totals = [];
                         cols.forEach((c, idx) => { if(c === "Total") totals.push(idx); });
                         if(totals.length >= 2) {
-                            b_tot_idx = totals[0];
-                            a_tot_idx = totals[1];
+                            b_tot_idx = totals[0]; a_tot_idx = totals[1];
                             for(let k = time_idx + 1; k < b_tot_idx; k++) {
                                 if(cols[k] === "J") { b_j_idx = k; hasJ = true; }
                                 if(cols[k] === "W") { b_w_idx = k; hasW = true; }
@@ -328,28 +760,23 @@
                         if (cols.length < (gate_idx !== -1 ? gate_idx : cols.length - 1)) continue;
 
                         let connStr = cols[conn_idx] || ""; 
-                        
                         let fltMatch = connStr.match(/^([A-Z0-9]{2,3}\d{1,4}[A-Za-z]?)\s*([A-Z]{3}-[A-Z]{3}.*)$/i);
                         if (!fltMatch) { fltMatch = connStr.match(/^([A-Z0-9]{2,3}\d{1,4}[A-Za-z]?)(.*)/i); }
                         
                         let flt = fltMatch ? fltMatch[1].toUpperCase() : connStr;
                         let destRaw = fltMatch && fltMatch[2] ? fltMatch[2].trim() : ""; 
                         
-                        let fltStd = cols[std_idx] || "";
-                        fltStd = fltStd.replace(":", ""); 
-                        
+                        let fltStd = cols[std_idx] || ""; fltStd = fltStd.replace(":", ""); 
                         let conx = cols[time_idx] || ""; 
                         
                         let b_j = b_j_idx !== -1 ? parseInt(cols[b_j_idx]) || 0 : 0;
                         let b_w = b_w_idx !== -1 ? parseInt(cols[b_w_idx]) || 0 : 0;
                         let b_y = b_y_idx !== -1 ? parseInt(cols[b_y_idx]) || 0 : 0;
                         let totalBooked = b_tot_idx !== -1 ? parseInt(cols[b_tot_idx]) || 0 : 0;
-                        
                         let a_j = a_j_idx !== -1 ? parseInt(cols[a_j_idx]) || 0 : 0;
                         let a_w = a_w_idx !== -1 ? parseInt(cols[a_w_idx]) || 0 : 0;
                         let a_y = a_y_idx !== -1 ? parseInt(cols[a_y_idx]) || 0 : 0;
                         let totalAccepted = a_tot_idx !== -1 ? parseInt(cols[a_tot_idx]) || 0 : 0;
-
                         let bags = bag_idx !== -1 ? parseInt(cols[bag_idx]) || 0 : 0;
                         let extraDest = dest_idx !== -1 ? cols[dest_idx] : ""; 
                         let dest = destRaw + (extraDest ? " " + extraDest : ""); 
@@ -366,9 +793,7 @@
                     let line = lines[i];
                     if(line.includes("FLTNR") && line.includes("DEST")) {
                         let headerPart = line.substring(line.indexOf("CONX"));
-                        hasJ = headerPart.includes("J");
-                        hasW = headerPart.includes("W");
-                        hasY = headerPart.includes("Y");
+                        hasJ = headerPart.includes("J"); hasW = headerPart.includes("W"); hasY = headerPart.includes("Y");
                         continue;
                     }
                     if(line.includes("POTENTIALLY MISSED")) { currentSection = 'Inside Min Connection Time'; continue; }
@@ -377,31 +802,17 @@
                     let parts = line.split(/(\d{2}H\d{2})/);
                     if(parts.length >= 3 && currentSection) {
                         let leftPart = parts[0].trim().split(/\s+/);
-                        let flt = leftPart[0];
-                        let fltStd = leftPart[1];
-                        let dest = leftPart.slice(2).join(" "); 
-                        let conx = parts[1];
-                        let numStr = parts[2].trim().split(/\s+/).filter(x => x !== "").map(Number);
-                        
+                        let flt = leftPart[0]; let fltStd = leftPart[1]; let dest = leftPart.slice(2).join(" "); 
+                        let conx = parts[1]; let numStr = parts[2].trim().split(/\s+/).filter(x => x !== "").map(Number);
                         let term = "", gate = "";
                         if(i+1 < lines.length && lines[i+1].includes("TER:")) {
                             let tgMatch = lines[i+1].match(/TER:\s*(\w*)\s*GATE:\s*(\w*)/);
                             if(tgMatch) { term = tgMatch[1] || ""; gate = tgMatch[2] || ""; }
                         }
-
-                        let idx = 0;
-                        let b_j = 0, b_w = 0, b_y = 0, a_j = 0, a_w = 0, a_y = 0;
-                        
-                        if(hasJ) b_j = numStr[idx++] || 0;
-                        if(hasW) b_w = numStr[idx++] || 0;
-                        if(hasY) b_y = numStr[idx++] || 0;
-                        if(hasJ) a_j = numStr[idx++] || 0;
-                        if(hasW) a_w = numStr[idx++] || 0;
-                        if(hasY) a_y = numStr[idx++] || 0;
-                        
-                        let bags = numStr[idx] || 0;
-                        let totalBooked = b_j + b_w + b_y;
-                        let totalAccepted = a_j + a_w + a_y;
+                        let idx = 0; let b_j = 0, b_w = 0, b_y = 0, a_j = 0, a_w = 0, a_y = 0;
+                        if(hasJ) b_j = numStr[idx++] || 0; if(hasW) b_w = numStr[idx++] || 0; if(hasY) b_y = numStr[idx++] || 0;
+                        if(hasJ) a_j = numStr[idx++] || 0; if(hasW) a_w = numStr[idx++] || 0; if(hasY) a_y = numStr[idx++] || 0;
+                        let bags = numStr[idx] || 0; let totalBooked = b_j + b_w + b_y; let totalAccepted = a_j + a_w + a_y;
 
                         if(totalBooked > 0 || totalAccepted > 0) { 
                             results[currentSection].push({ flt, fltStd, dest, conx, b_j, b_w, b_y, totalBooked, a_j, a_w, a_y, totalAccepted, bags, term, gate });
@@ -416,7 +827,6 @@
             let container = document.getElementById('report-container');
             let results = dataObj.results;
             
-            // XÁC ĐỊNH ĐIỂM HẠ CÁNH THỰC TẾ LÀM ĐIỂM KHỞI HÀNH NỐI CHUYẾN
             let transitPort = dataObj.routing && dataObj.routing.includes('-') ? dataObj.routing.split('-')[1] : "SGN";
             if (!transitPort) transitPort = "SGN";
             
@@ -429,17 +839,14 @@
             if (results['Inside Min Connection Time'] && results['Inside Min Connection Time'].length > 0) {
                 let reportLines = results['Inside Min Connection Time'].map(r => {
                     let paxCount = r.totalAccepted > 0 ? r.totalAccepted : r.totalBooked;
-                    
                     let rawDest = r.dest.trim().split(' ')[0];
                     let destStr = rawDest;
                     
-                    if (/^[A-Z]{3}$/.test(rawDest)) {
-                        destStr = transitPort + "-" + rawDest;
-                    } else if (rawDest.includes('-')) {
+                    if (/^[A-Z]{3}$/.test(rawDest)) { destStr = transitPort + "-" + rawDest; } 
+                    else if (rawDest.includes('-')) {
                         let parts = rawDest.split('-');
                         destStr = parts[parts.length-2].slice(-3) + "-" + parts[parts.length-1].slice(0,3);
                     }
-                    
                     let etdFormat = r.fltStd.substring(0,2) + ":" + r.fltStd.substring(2);
                     return `- ${paxCount}pax/${r.bags}pcs nối chuyến ${r.flt}/${destStr}/ETD ${etdFormat}`;
                 });
@@ -461,9 +868,7 @@ ${reportLines.join('\n')}</div>
             let catCols = (dataObj.hasJ?1:0) + (dataObj.hasW?1:0) + (dataObj.hasY?1:0) + 1; 
 
             let bookedHeaderStr = "";
-            if(dataObj.hasJ) bookedHeaderStr += "J ";
-            if(dataObj.hasW) bookedHeaderStr += "W ";
-            if(dataObj.hasY) bookedHeaderStr += "Y ";
+            if(dataObj.hasJ) bookedHeaderStr += "J "; if(dataObj.hasW) bookedHeaderStr += "W "; if(dataObj.hasY) bookedHeaderStr += "Y ";
             bookedHeaderStr += `<span class="font-bold">Total</span>`;
 
             let accHeaders = "";
@@ -507,50 +912,52 @@ ${reportLines.join('\n')}</div>
                         let rawDest = row.dest.trim().split(' ')[0];
                         let finalDestString = rawDest;
                         
-                        if (/^[A-Z]{3}$/.test(rawDest)) {
-                            finalDestString = transitPort + "-" + rawDest;
-                        } else if (rawDest.includes('-')) {
+                        if (/^[A-Z]{3}$/.test(rawDest)) { finalDestString = transitPort + "-" + rawDest; } 
+                        else if (rawDest.includes('-')) {
                             let parts = rawDest.split('-');
                             finalDestString = parts[parts.length-2].slice(-3) + "-" + parts[parts.length-1].slice(0,3);
                         }
 
                         let extraDest = row.dest.split(' ').length > 1 ? row.dest.split(' ')[1] : '';
-                        
                         let bookedVals = "";
-                        if(dataObj.hasJ) bookedVals += row.b_j + " ";
-                        if(dataObj.hasW) bookedVals += row.b_w + " ";
-                        if(dataObj.hasY) bookedVals += row.b_y + " ";
+                        if(dataObj.hasJ) bookedVals += row.b_j + " "; if(dataObj.hasW) bookedVals += row.b_w + " "; if(dataObj.hasY) bookedVals += row.b_y + " ";
                         
                         let accVals = "";
-                        if(dataObj.hasJ) accVals += `<td class="col-min">${row.a_j}</td>`;
-                        if(dataObj.hasW) accVals += `<td class="col-min">${row.a_w}</td>`;
-                        if(dataObj.hasY) accVals += `<td class="col-min">${row.a_y}</td>`;
+                        if(dataObj.hasJ) accVals += `<td class="col-min">${row.a_j}</td>`; if(dataObj.hasW) accVals += `<td class="col-min">${row.a_w}</td>`; if(dataObj.hasY) accVals += `<td class="col-min">${row.a_y}</td>`;
                         
                         tableHTML += `
                         <tr class="${rClass} hover:bg-gray-50">
                             <td class="text-left col-min">${rowCount} &nbsp; ${row.flt} &nbsp; ${finalDestString}</td>
-                            <td class="col-min"></td>
-                            <td class="col-min"></td>
-                            <td class="col-min">${row.fltStd.substring(0,2)}:${row.fltStd.substring(2)}</td>
+                            <td class="col-min"></td><td class="col-min"></td><td class="col-min">${row.fltStd.substring(0,2)}:${row.fltStd.substring(2)}</td>
                             <td class="col-min">${row.conx.toLowerCase()}</td>
                             <td class="col-min text-gray-400 text-[10px] md:text-xs">${bookedVals}&nbsp;<span class="font-bold text-gray-600">${row.totalBooked}</span></td>
                             ${accVals}
-                            <td class="col-min font-bold">${row.totalAccepted}</td>
-                            <td class="col-min font-bold text-blue-600">${row.bags}</td>
-                            <td class="col-min text-[10px] md:text-xs">${extraDest}</td>
-                            <td class="col-min">${row.term}</td>
-                            <td class="col-min font-bold">${row.gate}</td>
+                            <td class="col-min font-bold">${row.totalAccepted}</td><td class="col-min font-bold text-blue-600">${row.bags}</td>
+                            <td class="col-min text-[10px] md:text-xs">${extraDest}</td><td class="col-min">${row.term}</td><td class="col-min font-bold">${row.gate}</td>
                         </tr>`;
                     });
                 }
             });
 
-            if (rowCount === 0) {
-                tableHTML += `<tr><td colspan="${5 + catCols + 1 + 4}" class="p-6 text-gray-500 font-semibold italic text-center bg-gray-50">✅ Chuyến bay này không có khách nối chuyến (0 pax).</td></tr>`;
-            }
-
+            if (rowCount === 0) { tableHTML += `<tr><td colspan="${5 + catCols + 1 + 4}" class="p-6 text-gray-500 font-semibold italic text-center bg-gray-50">✅ Chuyến bay này không có khách nối chuyến (0 pax).</td></tr>`; }
             tableHTML += `</tbody></table></div>`;
             container.innerHTML = summaryHTML + tableHTML;
+        }
+
+        window.deleteAllReports = async function() {
+            if(confirm("⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA TOÀN BỘ lịch sử Oncarriage?\n\nHành động này không thể hoàn tác!")) {
+                try {
+                    const q = query(collection(db, 'reports'));
+                    const snapshot = await getDocs(q);
+                    if (snapshot.empty) { alert("Hệ thống hiện không có dữ liệu nào để xóa."); return; }
+                    document.getElementById('history-list').innerHTML = '<div class="text-center text-xs md:text-sm text-red-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Đang xóa toàn bộ...</div>';
+                    const deletePromises = [];
+                    snapshot.forEach(docSnap => { deletePromises.push(deleteDoc(doc(db, 'reports', docSnap.id))); });
+                    await Promise.all(deletePromises);
+                    loadHistory(); 
+                    document.getElementById('report-container').innerHTML = '<div class="text-center text-gray-400 mt-10 md:mt-20 italic text-sm md:text-base">Toàn bộ dữ liệu cũ đã được xóa sạch.</div>';
+                } catch (err) { alert("Lỗi khi xóa dữ liệu: " + err.message); loadHistory(); }
+            }
         }
 
         async function loadHistory() {
