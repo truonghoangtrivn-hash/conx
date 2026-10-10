@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Summary Parser & Storage</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .excel-table {
+            border-collapse: collapse;
+            font-family: Tahoma, Arial, sans-serif;
+            font-size: 11px; /* Thu nhỏ font chữ để bảng gọn hơn */
+            color: #000;
+            white-space: nowrap;
+            margin: 0;
+            width: max-content; /* Không ép giãn ra 100% màn hình, chỉ ôm vừa đủ chữ */
+        }
+        
+        .excel-table th, .excel-table td {
+            border: 1px solid #b8b09f;
+            padding: 1px 3px; /* Ép mỏng tối đa padding */
+        }
+        
+        .excel-table th {
+            background-color: #e6dfcf;
+            font-weight: normal;
+            text-align: center;
+        }
+        
+        .excel-table th.bold-header { font-weight: bold; }
+        .excel-table td.bold-cell { font-weight: bold; }
+        
+        .excel-table .text-center { text-align: center; }
+        .excel-table .text-left { text-align: left; }
+        .excel-table .text-right { text-align: right; }
+        
+        /* Thủ thuật ép cột nhỏ lại tối đa, ôm sát nội dung */
+        .col-num { width: 1%; white-space: nowrap; }
+        .col-time { width: 1%; white-space: nowrap; text-align: center;}
+        .col-min { width: 1%; white-space: nowrap; }
+        
+        .excel-table .noborder-r { border-right: none !important; }
+        .excel-table .noborder-l { border-left: none !important; }
+        
+        .bg-odd { background-color: #ffffff; }
+        .bg-even { background-color: #f1ebd5; }
+        
+        .bg-odd-missed { background-color: #fff0f0; color: #b91c1c; }
+        .bg-even-missed { background-color: #fee2e2; color: #991b1b; }
+        .section-header-missed { 
+            background-color: #fca5a5 !important; 
+            color: #7f1d1d !important; 
+            font-weight: bold !important; 
+            font-size: 12px;
+        }
+        
+        .section-header {
+            background-color: #e2e8f5 !important;
+            color: #0d2876;
+            text-align: left;
+            font-weight: normal;
+            padding-left: 10px !important;
+            border-bottom: 1px solid #b8b09f;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-width: 100%;
+            background: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        #summaryBox {
+            background-color: #fefce8;
+            border-left: 4px solid #facc15;
+            color: #854d0e;
+        }
+
+        .history-item:hover { background-color: #f3f4f6; cursor: pointer; }
+        .history-item.active { background-color: #e5e7eb; border-left: 4px solid #3b82f6; }
+        
+        #modalOverlay {
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+        }
+    </style>
+</head>
+<body class="p-2 md:p-6 flex flex-col h-screen">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white shadow-sm rounded-lg mb-4 p-4 flex justify-between items-center shrink-0">
+        <div>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">Trích xuất & Lưu trữ Chuyến bay</h1>
+            <p class="text-xs md:text-sm text-gray-500">Hệ thống xử lý và lưu trữ dữ liệu Oncarriage tự động.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="authStatus" class="text-xs md:text-sm font-medium px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">Đang kết nối...</span>
+            <button id="toggleHistoryBtn" class="md:hidden bg-gray-200 p-2 rounded-md hover:bg-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 gap-4 overflow-hidden">
+        <!-- Panel Lịch Sử (Thu nhỏ bề ngang) -->
+        <div id="historyPanel" class="hidden md:flex flex-col w-full md:w-64 bg-white rounded-lg shadow-md overflow-hidden shrink-0 z-10 absolute md:relative inset-y-0 left-0">
+            <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
+                <h2 class="font-semibold text-gray-700">Lịch sử xử lý</h2>
+                <button id="closeHistoryBtn" class="md:hidden text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <div id="historyList" class="flex-1 overflow-y-auto p-2">
+                <div class="text-center text-sm text-gray-400 mt-10">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+
+        <!-- Panel Nội dung chính (Bên phải) -->
+        <div class="flex-1 flex flex-col overflow-y-auto bg-white rounded-lg shadow-md p-4 md:p-6">
+            
+            <!-- Phần Nhập liệu -->
+            <div id="inputSection" class="mb-6">
+                <div class="flex justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">Dán văn bản tổng hợp vào đây (Phần mềm sẽ tự động xử lý):</label>
+                    <button id="newParseBtn" class="text-sm text-blue-600 hover:text-blue-800 hidden font-medium flex items-center gap-1">
+                        <span>+ Xử lý báo cáo mới</span>
+                    </button>
+                </div>
+                <textarea id="inputText" rows="8" class="w-full border border-gray-300 rounded-md p-3 font-mono text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Dán văn bản ONCARRIAGE CUSTOMER SUMMARY vào đây..."></textarea>
+                <div id="messageBox" class="hidden mt-2 px-3 py-1 rounded text-xs md:text-sm font-medium"></div>
+            </div>
+
+            <!-- Khung Thông tin Báo cáo (khi xem lịch sử) -->
+            <div id="reportInfo" class="hidden mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-blue-800 text-sm md:text-base" id="reportTitleDisplay">Báo cáo: ...</h3>
+                    <p class="text-xs text-blue-600" id="reportTimeDisplay">Ngày lưu: ...</p>
+                </div>
+            </div>
+
+            <!-- Khung tóm tắt khách nối chuyến ngắn -->
+            <div id="summaryBox" class="hidden mb-6 p-4 rounded-r-md shadow-sm text-sm md:text-base font-semibold whitespace-pre-line leading-relaxed"></div>
+
+            <!-- Vùng hiển thị Bảng -->
+            <div id="resultContainer" class="table-container hidden flex-1">
+                <table class="excel-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th colspan="3" rowspan="2" class="noborder-r"></th>
+                            <th rowspan="3" class="col-time">ATD</th>
+                            <th rowspan="3" class="col-time">ETD</th>
+                            <th rowspan="3" class="col-time">STD</th>
+                            <th class="col-time">Actual</th>
+                            <th colspan="8">Customer Categories</th>
+                            <th rowspan="2" class="col-num">Final</th>
+                            <th rowspan="3" class="col-min">Dest.</th>
+                            <th rowspan="3" class="col-min">Term.</th>
+                            <th rowspan="3" class="col-min">Gate</th>
+                        </tr>
+                        <tr>
+                            <th class="col-time">Connect</th>
+                            <th colspan="4">Booked</th>
+                            <th colspan="4">Accepted</th>
+                        </tr>
+                        <tr>
+                            <th colspan="3" class="text-left noborder-r noborder-l pl-2">Connection</th>
+                            <th class="col-time">Time</th>
+                            <th class="col-num">J</th>
+                            <th class="col-num">W</th>
+                            <th class="col-num">Y</th>
+                            <th class="bold-header col-num">Total</th>
+                            <th class="col-num">J</th>
+                            <th class="col-num">W</th>
+                            <th class="col-num">Y</th>
+                            <th class="bold-header col-num">Total</th>
+                            <th class="bold-header col-num">Bags</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be injected here by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nền mờ cho Mobile Menu -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-0 hidden md:hidden"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // TẠM THỜI: Cấu hình Firebase Demo (Sau này bạn cần thay bằng cấu hình thật để lưu trữ vĩnh viễn)
+        const firebaseConfig = { projectId: "demo-project-oncarriage" };
+        const appId = 'flight-parser-app';
+        let app, db, auth;
+        let currentUserUid = null;
+        let unsubscribeHistory = null;
+        let currentViewingDocId = null;
+
+        const ui = {
+            inputText: document.getElementById('inputText'),
+            messageBox: document.getElementById('messageBox'),
+            resultContainer: document.getElementById('resultContainer'),
+            summaryBox: document.getElementById('summaryBox'),
+            tableBody: document.getElementById('tableBody'),
+            authStatus: document.getElementById('authStatus'),
+            historyList: document.getElementById('historyList'),
+            inputSection: document.getElementById('inputSection'),
+            reportInfo: document.getElementById('reportInfo'),
+            reportTitleDisplay: document.getElementById('reportTitleDisplay'),
+            reportTimeDisplay: document.getElementById('reportTimeDisplay'),
+            newParseBtn: document.getElementById('newParseBtn'),
+            historyPanel: document.getElementById('historyPanel'),
+            overlay: document.getElementById('overlay'),
+            toggleHistoryBtn: document.getElementById('toggleHistoryBtn'),
+            closeHistoryBtn: document.getElementById('closeHistoryBtn')
+        };
+
+        window.showMessage = function(msg, type = 'info') {
+            ui.messageBox.textContent = msg;
+            ui.messageBox.className = "mt-2 px-3 py-1 rounded text-xs md:text-sm font-medium block";
+            if (type === 'error') ui.messageBox.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-300');
+            else if (type === 'success') ui.messageBox.classList.add('bg-green-100', 'text-green-700', 'border', 'border-green-300');
+            else ui.messageBox.classList.add('bg-blue-100', 'text-blue-700', 'border', 'border-blue-300');
+            setTimeout(() => { ui.messageBox.classList.add('hidden'); }, 4000);
+        };
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            ui.authStatus.textContent = "Đang kết nối Cloud...";
+            
+            signInAnonymously(auth).catch(e => {
+                ui.authStatus.textContent = "Chế độ Local (Demo)";
+                ui.authStatus.className = "text-xs font-medium px-2 py-1 rounded bg-gray-100 text-gray-600";
+            });
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUserUid = user.uid;
+                    ui.authStatus.textContent = "Đã kết nối Cloud (Lưu tự động)";
+                    ui.authStatus.className = "text-xs font-medium px-2 py-1 rounded-full border border-green-300 bg-green-50 text-green-700";
+                    loadHistory();
+                } else {
+                    currentUserUid = null;
+                }
+            });
+        } catch (e) {
+            ui.authStatus.textContent = "Chỉ dùng cục bộ";
+            ui.authStatus.className = "text-xs font-medium px-2 py-1 rounded bg-gray-100 text-gray-600";
+            ui.historyList.innerHTML = "<div class='p-3 text-sm text-gray-500'>Tính năng lưu trữ đám mây tạm tắt do chưa cấu hình thật.</div>";
+        }
+
+        function parseData(text) {
+            const lines = text.split('\n').map(l => l.trim());
+            let baseAirport = "SGN"; 
+            let inboundOrigin = ""; 
+            let inboundFlight = "INBOUND";
+            let inboundETA = "";
+            let inboundDate = ""; 
+            
+            // Tìm Header
+            const headerInfoRegex = /^([A-Z0-9]+)\s+(\d{2}[A-Z]{3})\s+([A-Z]{3})\s+STD(\d{4})(?:\s+ETD(\d{4}))?/i;
+            for (let i = 0; i < Math.min(10, lines.length); i++) {
+                const headerMatch = lines[i].match(headerInfoRegex);
+                if (headerMatch) {
+                    inboundFlight = headerMatch[1];
+                    inboundDate = headerMatch[2]; 
+                    inboundOrigin = headerMatch[3]; 
+                    const rawTime = headerMatch[5] ? headerMatch[5] : headerMatch[4];
+                    inboundETA = rawTime.substring(0, 2) + ':' + rawTime.substring(2, 4);
+                    break;
+                }
+            }
+            
+            for (let line of lines) {
+                const connMatch = line.match(/([A-Z]{3})-([A-Z]{3})\(([A-Z0-9]+)\)/);
+                if (connMatch) {
+                    if(!inboundOrigin) inboundOrigin = connMatch[1];
+                    baseAirport = connMatch[2];
+                    inboundFlight = connMatch[3];
+                    break;
+                }
+            }
+            
+            let routing = inboundOrigin && baseAirport ? `${inboundOrigin}-${baseAirport}` : "";
+
+            const results = [];
+            let currentSection = "Connection OK"; 
+            let lastResult = null; 
+            
+            // Xác định khoang dựa vào Header FLTNR
+            let hasJ = true, hasW = true, hasY = true;
+            const fltHeader = lines.find(l => l.includes("FLTNR") && l.includes("CONX"));
+            if (fltHeader) {
+                const classesPart = fltHeader.substring(fltHeader.indexOf("CONX") + 4);
+                hasJ = classesPart.includes("J");
+                hasW = classesPart.includes("W");
+                hasY = classesPart.includes("Y");
+            }
+
+            // Regex linh hoạt hơn
+            const rowRegex = /^([A-Z0-9]{2,5}\d{1,4})\s+(\d{4})\s+([A-Z]{3})\s+(?:([A-Z]{3}(?:\s[A-Z]{3})?)\s+)?(\d{2}H\d{2})\s+((?:\d+\s+){2,6}\d+)/i;
+
+            for (let i=0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (line.includes("POTENTIALLY MISSED OUTBOUND CONNECTION")) {
+                    currentSection = "Inside Min Connection Time";
+                    continue;
+                } else if (line.includes("OUTBOUND CONNECTION") && !line.includes("POTENTIALLY MISSED")) {
+                    currentSection = "Connection OK";
+                    continue;
+                }
+
+                // Nhặt thông tin TER/GATE rớt dòng
+                const terGateMatch = line.match(/^TER:\s*([a-zA-Z0-9-]*)(?:\s*GATE:\s*(.*))?$/i);
+                if (terGateMatch && lastResult) {
+                    lastResult.term = terGateMatch[1] ? terGateMatch[1].trim() : lastResult.term;
+                    lastResult.gate = terGateMatch[2] ? terGateMatch[2].trim() : lastResult.gate;
+                    continue; 
+                }
+
+                const match = line.match(rowRegex);
+                if (match) {
+                    const stdRaw = match[2];
+                    const stdFormatted = stdRaw.substring(0, 2) + ':' + stdRaw.substring(2, 4);
+                    
+                    const conxRaw = match[5].toUpperCase();
+                    const hours = parseInt(conxRaw.substring(0, 2), 10).toString(); 
+                    const mins = conxRaw.substring(3, 5);
+                    const conxFormatted = hours + 'h' + mins;
+
+                    const numbersStr = match[6].trim();
+                    const nums = numbersStr.split(/\s+/).map(n => parseInt(n, 10));
+                    
+                    let b_j = 0, b_w = 0, b_y = 0, a_j = 0, a_w = 0, a_y = 0, bags = 0;
+                    
+                    if (nums.length === 7) { 
+                        b_j = nums[0]; b_w = nums[1]; b_y = nums[2];
+                        a_j = nums[3]; a_w = nums[4]; a_y = nums[5];
+                        bags = nums[6];
+                    } else if (nums.length === 5) {
+                        if (hasW && hasY && !hasJ) { 
+                            b_w = nums[0]; b_y = nums[1]; a_w = nums[2]; a_y = nums[3];
+                        } else { 
+                            b_j = nums[0]; b_y = nums[1]; a_j = nums[2]; a_y = nums[3];
+                        }
+                        bags = nums[4];
+                    } else if (nums.length === 3) {
+                        if (hasW && !hasY && !hasJ) { b_w = nums[0]; a_w = nums[1]; } 
+                        else if (hasJ && !hasY && !hasW) { b_j = nums[0]; a_j = nums[1]; } 
+                        else { b_y = nums[0]; a_y = nums[1]; }
+                        bags = nums[2];
+                    }
+
+                    let term = "", gate = "";
+                    const inlineTerGate = line.match(/TER:\s*([a-zA-Z0-9-]*)(?:\s*GATE:\s*(.*))?$/i);
+                    if (inlineTerGate) {
+                        term = inlineTerGate[1] ? inlineTerGate[1].trim() : "";
+                        gate = inlineTerGate[2] ? inlineTerGate[2].trim() : "";
+                    }
+
+                    const flightData = {
+                        section: currentSection,
+                        flight: match[1],
+                        std: stdFormatted,
+                        arr: match[3],
+                        dest: match[4] ? match[4].trim() : "",
+                        conx: conxFormatted,
+                        b_j, b_w, b_y, a_j, a_w, a_y, bags,
+                        term: term, gate: gate
+                    };
+                    
+                    results.push(flightData);
+                    lastResult = flightData; 
+                } else if (line.trim() !== "" && !line.includes("FLTNR") && !line.includes("BOOKED") && !line.includes("CODESHARE")) {
+                    if(!line.match(/^TER:/i)) lastResult = null;
+                }
+            }
+            
+            return { routing, baseAirport, inboundFlight, inboundDate, inboundETA, results, rawText: text };
+        }
+
+        function renderTable(data) {
+            ui.tableBody.innerHTML = '';
+            ui.summaryBox.classList.add('hidden');
+            ui.summaryBox.innerHTML = '';
+
+            if (!data.results || data.results.length === 0) {
+                if(!currentViewingDocId) window.showMessage("Không tìm thấy dữ liệu hợp lệ. Vui lòng kiểm tra lại.", "error");
+                ui.resultContainer.classList.add('hidden');
+                return;
+            }
+
+            const sections = {
+                "Inside Min Connection Time": [],
+                "Connection OK": []
+            };
+
+            data.results.forEach(row => {
+                if(sections[row.section]) sections[row.section].push(row);
+                else sections["Connection OK"].push(row);
+            });
+
+            let globalIndex = 1;
+            let totalRendered = 0; 
+            const MAX_ROWS = 10; 
+
+            // Cập nhật Summary
+            const missedSection = sections["Inside Min Connection Time"];
+            if (missedSection && missedSection.length > 0) {
+                const missedDetails = [];
+                const missedByFlight = {};
+                
+                missedSection.forEach(row => {
+                    const totalAccepted = row.a_j + row.a_w + row.a_y;
+                    if (!missedByFlight[row.flight]) {
+                        missedByFlight[row.flight] = { flight: row.flight, etd: row.std, pax: 0, bags: 0 };
+                    }
+                    missedByFlight[row.flight].pax += totalAccepted;
+                    missedByFlight[row.flight].bags += row.bags;
+                });
+                
+                for (const k in missedByFlight) {
+                    const f = missedByFlight[k];
+                    if (f.pax > 0) {
+                        missedDetails.push(`- ${f.pax}pax/${f.bags}pcs\nđi tiếp ${f.flight} ETD ${f.etd}`);
+                    }
+                }
+
+                if (missedDetails.length > 0) {
+                    const etaDisplay = data.inboundETA ? data.inboundETA : '...';
+                    const summaryText = `${data.inboundFlight} ETA ${etaDisplay}, có khách nối chuyến ngắn:\n${missedDetails.join('\n')}`;
+                    ui.summaryBox.textContent = summaryText;
+                    ui.summaryBox.classList.remove('hidden');
+                }
+            }
+
+            const createRowHTML = (row, isMissed, index) => {
+                const bgClass = isMissed ? (index % 2 === 0 ? 'bg-odd-missed' : 'bg-even-missed') : (index % 2 === 0 ? 'bg-odd' : 'bg-even');
+                const totalB = row.b_j + row.b_w + row.b_y;
+                const totalA = row.a_j + row.a_w + row.a_y;
+                return `<tr class="${bgClass}">
+                    <td class="text-left noborder-r col-num">${globalIndex++}</td>
+                    <td class="text-left noborder-r noborder-l col-min">${row.flight}</td>
+                    <td class="text-left noborder-l col-min">${data.baseAirport}-${row.arr}</td>
+                    <td></td><td></td>
+                    <td class="col-time">${row.std}</td>
+                    <td class="col-time">${row.conx}</td>
+                    <td class="text-right col-num">${row.b_j}</td><td class="text-right col-num">${row.b_w}</td><td class="text-right col-num">${row.b_y}</td>
+                    <td class="text-right bold-cell col-num">${totalB}</td>
+                    <td class="text-right col-num">${row.a_j}</td><td class="text-right col-num">${row.a_w}</td><td class="text-right col-num">${row.a_y}</td>
+                    <td class="text-right bold-cell col-num">${totalA}</td>
+                    <td class="text-right bold-cell col-num">${row.bags}</td>
+                    <td class="text-center col-min">${row.dest}</td><td class="text-center col-min">${row.term}</td><td class="text-center col-min">${row.gate}</td>
+                </tr>`;
+            };
+
+            const renderSection = (sectionName, rows) => {
+                if (rows.length === 0 || totalRendered >= MAX_ROWS) return;
+                
+                const isMissed = sectionName === "Inside Min Connection Time";
+                const headerClass = isMissed ? "section-header section-header-missed" : "section-header";
+                ui.tableBody.innerHTML += `<tr><td colspan="19" class="${headerClass}">${sectionName}</td></tr>`;
+                
+                for (let i = 0; i < rows.length; i++) {
+                    if (totalRendered >= MAX_ROWS) break; 
+                    ui.tableBody.innerHTML += createRowHTML(rows[i], isMissed, i);
+                    totalRendered++;
+                }
+            };
+
+            renderSection("Inside Min Connection Time", sections["Inside Min Connection Time"]);
+            renderSection("Connection OK", sections["Connection OK"]);
+
+            ui.resultContainer.classList.remove('hidden');
+        }
+
+        async function saveReportToCloud(dataObj) {
+            if (!currentUserUid || !db) return;
+            try {
+                const userRef = collection(db, 'artifacts', appId, 'users', currentUserUid, 'reports');
+                const docData = {
+                    inboundFlight: dataObj.inboundFlight,
+                    inboundDate: dataObj.inboundDate || '',
+                    inboundETA: dataObj.inboundETA,
+                    baseAirport: dataObj.baseAirport,
+                    routing: dataObj.routing, 
+                    totalFlights: dataObj.results.length,
+                    createdAt: serverTimestamp(),
+                    resultsJson: JSON.stringify(dataObj.results),
+                    rawText: dataObj.rawText
+                };
+                const docRef = await addDoc(userRef, docData);
+                window.showMessage("Đã lưu tự động lên Cloud!", "success");
+                currentViewingDocId = docRef.id;
+            } catch (err) {
+                window.showMessage("Phân tích thành công nhưng lỗi kết nối Cloud.", "error");
+            }
+        }
+
+        function loadHistory() {
+            if (!currentUserUid || !db) return;
+            if (unsubscribeHistory) unsubscribeHistory();
+            
+            const userRef = collection(db, 'artifacts', appId, 'users', currentUserUid, 'reports');
+            ui.historyList.innerHTML = "<div class='p-4 text-center text-gray-500 text-sm'>Đang đồng bộ...</div>";
+            
+            unsubscribeHistory = onSnapshot(userRef, (snapshot) => {
+                if (snapshot.empty) {
+                    ui.historyList.innerHTML = `<div class="p-4 text-center text-gray-400 text-xs">Chưa có dữ liệu.</div>`;
+                    return;
+                }
+                
+                let docs = [];
+                snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+                
+                docs.sort((a, b) => {
+                    const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
+                    const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
+                    return timeB - timeA;
+                });
+
+                ui.historyList.innerHTML = '';
+                docs.forEach(d => {
+                    const timeDisplay = d.inboundETA ? d.inboundETA : '...';
+                    const dateDisplay = d.inboundDate ? `${d.inboundDate}` : '';
+                    const titleText = `${d.inboundFlight || 'N/A'} [${d.routing || ''}]`;
+                    
+                    const el = document.createElement('div');
+                    el.className = `history-item p-2 border-b flex flex-col transition-colors ${d.id === currentViewingDocId ? 'active' : ''}`;
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1 cursor-pointer report-info-click truncate pr-2">
+                                <div class="font-bold text-gray-800 text-sm truncate" title="${titleText}">
+                                    ${titleText}
+                                </div>
+                                <div class="text-blue-600 font-medium text-xs mt-0.5">
+                                    ${dateDisplay} - ETA: ${timeDisplay}
+                                </div>
+                            </div>
+                            <button class="delete-btn text-gray-400 hover:text-red-500 p-1.5 rounded-md hover:bg-red-50 transition-colors" title="Xóa">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    `;
+                    
+                    el.querySelector('.report-info-click').addEventListener('click', () => viewReport(d, el));
+                    el.querySelector('.delete-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if(confirm(`Xóa chuyến bay ${d.inboundFlight}?`)) deleteReportById(d.id);
+                    });
+                    
+                    ui.historyList.appendChild(el);
+                });
+            });
+        }
+
+        async function deleteReportById(docId) {
+            if (!currentUserUid || !db || !docId) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUserUid, 'reports', docId));
+                if (currentViewingDocId === docId) resetToInputMode();
+            } catch(e) { }
+        }
+
+        function viewReport(dataObj, elementRow) {
+            currentViewingDocId = dataObj.id;
+            document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+            if(elementRow) elementRow.classList.add('active');
+            
+            ui.inputSection.classList.add('hidden');
+            ui.reportInfo.classList.remove('hidden');
+            ui.newParseBtn.classList.remove('hidden');
+            
+            const routeDisplay = dataObj.routing ? ` [${dataObj.routing}]` : '';
+            ui.reportTitleDisplay.textContent = `Chuyến bay: ${dataObj.inboundFlight || 'Không rõ'}${routeDisplay} (${dataObj.inboundDate || ''})`;
+            ui.reportTimeDisplay.textContent = `ETA: ${dataObj.inboundETA || '...'}`;
+            
+            try {
+                const parsedResults = typeof dataObj.resultsJson === 'string' ? JSON.parse(dataObj.resultsJson) : [];
+                renderTable({
+                    inboundFlight: dataObj.inboundFlight,
+                    inboundETA: dataObj.inboundETA,
+                    baseAirport: dataObj.baseAirport || 'SGN',
+                    routing: dataObj.routing,
+                    results: parsedResults
+                });
+                
+                if(window.innerWidth < 768) {
+                    ui.historyPanel.classList.add('hidden');
+                    ui.overlay.classList.add('hidden');
+                }
+            } catch(e) {}
+        }
+
+        function resetToInputMode() {
+            currentViewingDocId = null;
+            document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+            ui.inputSection.classList.remove('hidden');
+            ui.reportInfo.classList.add('hidden');
+            ui.newParseBtn.classList.add('hidden');
+            ui.inputText.value = '';
+            ui.resultContainer.classList.add('hidden');
+            ui.summaryBox.classList.add('hidden');
+            ui.tableBody.innerHTML = '';
+            ui.inputText.focus();
+        }
+
+        let parseTimeout;
+        ui.inputText.addEventListener('input', (e) => {
+            const text = e.target.value;
+            if(text.includes('ONCARRIAGE') || text.length > 100) {
+                clearTimeout(parseTimeout);
+                parseTimeout = setTimeout(() => {
+                    const data = parseData(text);
+                    if (data.results && data.results.length > 0) {
+                        renderTable(data);
+                        saveReportToCloud(data);
+                        ui.inputText.value = ''; // Tự động xóa khung để nhập tiếp
+                    } else if (text.trim().length > 200) {
+                        window.showMessage("Không tìm thấy dữ liệu hợp lệ.", "error");
+                    }
+                }, 400); 
+            }
+        });
+
+        ui.newParseBtn.addEventListener('click', resetToInputMode);
+        ui.toggleHistoryBtn.addEventListener('click', () => {
+            ui.historyPanel.classList.remove('hidden');
+            ui.overlay.classList.remove('hidden');
+        });
+        ui.closeHistoryBtn.addEventListener('click', () => {
+            ui.historyPanel.classList.add('hidden');
+            ui.overlay.classList.add('hidden');
+        });
+        ui.overlay.addEventListener('click', () => {
+            ui.historyPanel.classList.add('hidden');
+            ui.overlay.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
