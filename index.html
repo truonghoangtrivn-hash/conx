@@ -15,7 +15,6 @@
         .danger-bg { background-color: #ffe6e6 !important; color: #cc0000; font-weight: bold; text-align: left !important; padding: 4px !important; }
         .text-left { text-align: left !important; }
         
-        /* Hiệu ứng thanh cuộn ngang mượt cho di động */
         .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
@@ -24,7 +23,6 @@
 </head>
 <body class="bg-gray-100 text-gray-800 h-screen overflow-hidden flex flex-col">
 
-    <!-- MÀN HÌNH KHÓA -->
     <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-50 flex items-center justify-center p-4">
         <div class="bg-white p-6 md:p-8 rounded-lg shadow-2xl w-full max-w-sm text-center">
             <div class="text-4xl text-blue-600 mb-4"><i class="fa-solid fa-plane-lock"></i></div>
@@ -37,16 +35,13 @@
         </div>
     </div>
 
-    <!-- ỨNG DỤNG CHÍNH -->
     <div id="main-app" class="hidden flex-col h-full w-full">
-        <!-- Header (Chỉ hiển thị trên máy tính, ẨN trên Mobile) -->
         <header class="hidden md:flex bg-white shadow z-10 p-4 justify-between items-center">
             <div class="flex-1 truncate pr-2">
                 <h1 class="text-2xl font-bold text-gray-800 truncate">Trích xuất Oncarriage</h1>
                 <p class="text-sm text-gray-500 truncate" id="db-status">Đang kết nối cơ sở dữ liệu...</p>
             </div>
             <div class="flex items-center gap-2">
-                <!-- Nút Làm mới cho PC -->
                 <button class="refresh-btn bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded shadow text-sm font-semibold flex-shrink-0">
                     <i class="fa-solid fa-rotate-right mr-1"></i> Làm mới
                 </button>
@@ -56,17 +51,14 @@
             </div>
         </header>
 
-        <!-- Khung làm việc chính -->
         <div class="flex flex-col md:flex-row flex-1 overflow-hidden h-full">
-            
-            <!-- Phần 1: Khung Dán Dữ Liệu & Báo Cáo (Nằm trên cùng trên Mobile) -->
             <main class="w-full flex-1 md:h-full overflow-y-auto p-2 md:p-6 bg-gray-100 flex flex-col items-center order-1 md:order-2">
                 <div class="w-full max-w-5xl h-full flex flex-col">
                     <div class="bg-white p-2 md:p-4 rounded shadow-sm border border-blue-200 mb-2 md:mb-6 shrink-0">
                         <label class="block text-xs md:text-sm font-semibold text-blue-700 mb-1 md:mb-2">Dán văn bản tổng hợp vào đây:</label>
                         <textarea id="data-input" rows="3" 
                             class="w-full border-2 border-dashed border-blue-300 p-2 md:p-3 rounded text-xs md:text-sm font-mono focus:outline-none focus:border-blue-50 focus:bg-blue-50 transition-colors resize-none" 
-                            placeholder="Dán dữ liệu ONCARRIAGE CUSTOMER SUMMARY..."></textarea>
+                            placeholder="Dán dữ liệu ONCARRIAGE CUSTOMER SUMMARY (hoặc JFE Plain Text)..."></textarea>
                     </div>
                     
                     <div id="report-container" class="w-full bg-white p-2 md:p-6 rounded shadow-lg flex-1 min-h-[150px] overflow-y-auto">
@@ -75,14 +67,10 @@
                 </div>
             </main>
 
-            <!-- Phần 2: Lịch sử lưu trữ (Nằm nửa dưới trên Mobile, bên trái trên PC) -->
             <aside class="w-full h-1/2 md:h-full md:w-1/4 md:min-w-[280px] bg-white border-t-2 md:border-r flex flex-col shadow-inner order-2 md:order-1 border-gray-200 shrink-0">
                 <div class="p-2 md:p-4 bg-gray-50 border-b font-bold text-gray-700 flex justify-between items-center text-sm md:text-base">
                     <span><i class="fa-solid fa-clock-rotate-left mr-2"></i>Lịch sử lưu trữ</span>
-                    
-                    <!-- Nút Tác vụ (Chỉ hiển thị trên Mobile) -->
                     <div class="flex items-center gap-2 md:hidden">
-                        <!-- Nút Làm mới cho Mobile -->
                         <button class="refresh-btn bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded shadow text-xs font-semibold">
                             <i class="fa-solid fa-rotate-right"></i>
                         </button>
@@ -95,7 +83,6 @@
                     <div class="text-center text-gray-400 text-xs md:text-sm mt-4 md:mt-10">Đang tải dữ liệu...</div>
                 </div>
             </aside>
-
         </div>
     </div>
 
@@ -125,17 +112,46 @@
             document.getElementById('db-status').classList.add('text-red-500');
         }
 
-        // --- HỆ THỐNG MẬT KHẨU ---
         const PIN = "140482";
         const passInput = document.getElementById('password-input');
         const loginOverlay = document.getElementById('login-overlay');
         const mainApp = document.getElementById('main-app');
+        
+        let inactivityTimer; 
+
+        function autoLogout() {
+            sessionStorage.removeItem('auth_chuyenbay');
+            mainApp.classList.remove('flex');
+            mainApp.classList.add('hidden');
+            loginOverlay.classList.remove('hidden');
+            
+            let statusEl = document.getElementById('login-status');
+            statusEl.innerText = "Đã tự động đăng xuất do không hoạt động (15p).";
+            statusEl.classList.add('text-red-500');
+            
+            passInput.value = '';
+            passInput.focus();
+        }
+
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            if (sessionStorage.getItem('auth_chuyenbay') === 'true') {
+                inactivityTimer = setTimeout(autoLogout, 900000); 
+            }
+        }
+
+        window.addEventListener('mousemove', resetInactivityTimer);
+        window.addEventListener('mousedown', resetInactivityTimer);
+        window.addEventListener('keypress', resetInactivityTimer);
+        window.addEventListener('touchmove', resetInactivityTimer); 
+        window.addEventListener('scroll', resetInactivityTimer);
 
         if (sessionStorage.getItem('auth_chuyenbay') === 'true') {
             loginOverlay.classList.add('hidden');
             mainApp.classList.remove('hidden'); 
             mainApp.classList.add('flex');
             if(db) loadHistory();
+            resetInactivityTimer();
         } else {
             passInput.focus();
         }
@@ -149,6 +165,9 @@
                     mainApp.classList.add('flex');
                     if(db) loadHistory();
                     this.value = ''; 
+                    document.getElementById('login-status').innerText = "Hệ thống tự động đăng nhập khi đủ 6 số.";
+                    document.getElementById('login-status').classList.remove('text-red-500');
+                    resetInactivityTimer();
                 } else {
                     this.classList.add('shake-err');
                     document.getElementById('login-status').innerText = "Sai mã PIN, vui lòng thử lại!";
@@ -165,41 +184,60 @@
             }
         });
 
-        // Gắn sự kiện ĐĂNG XUẤT
         document.querySelectorAll('.logout-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                clearTimeout(inactivityTimer); 
                 sessionStorage.removeItem('auth_chuyenbay');
                 mainApp.classList.remove('flex');
                 mainApp.classList.add('hidden');
                 loginOverlay.classList.remove('hidden');
+                document.getElementById('login-status').innerText = "Hệ thống tự động đăng nhập khi đủ 6 số.";
+                document.getElementById('login-status').classList.remove('text-red-500');
                 passInput.focus();
             });
         });
 
-        // Gắn sự kiện LÀM MỚI (Refresh)
         document.querySelectorAll('.refresh-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                // Tạo hiệu ứng xoay cho icon
                 let icon = btn.querySelector('i');
                 icon.classList.add('fa-spin');
                 setTimeout(() => icon.classList.remove('fa-spin'), 500);
 
-                // Reset các khung nhập và hiển thị
                 document.getElementById('data-input').value = '';
                 document.getElementById('report-container').innerHTML = '<div class="text-center text-gray-400 mt-10 md:mt-20 italic text-sm md:text-base">Đã làm mới. Chưa có dữ liệu hiển thị.</div>';
                 
-                // Tải lại lịch sử từ đám mây
                 if(db) loadHistory();
             });
         });
 
-        // --- PHÂN TÍCH TEXT ---
+        window.copyReport = function(btn) {
+            let text = decodeURIComponent(btn.getAttribute('data-clipboard'));
+            navigator.clipboard.writeText(text).then(() => {
+                let originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Đã Copy';
+                btn.classList.replace('bg-blue-500', 'bg-green-600');
+                btn.classList.replace('hover:bg-blue-600', 'hover:bg-green-700');
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.replace('bg-green-600', 'bg-blue-500');
+                    btn.classList.replace('hover:bg-green-700', 'hover:bg-blue-600');
+                }, 2000);
+            }).catch(err => {
+                alert("Lỗi khi copy: " + err);
+            });
+        }
+
         const dataInput = document.getElementById('data-input');
         dataInput.addEventListener('input', async function() {
             let text = this.value;
-            if(text.trim().length > 100 && text.includes("ONCARRIAGE")) {
+            if(text.trim().length > 50 && (text.includes("ONCARRIAGE") || text.includes("JFE Screen Copy") || text.includes("Connection Summary"))) {
                 let parsedObj = parseData(text);
-                if(parsedObj && (parsedObj.results['Connection OK'].length > 0 || parsedObj.results['Inside Min Connection Time'].length > 0)) {
+                
+                if(parsedObj && parsedObj.inboundFlight !== "UNKNOWN") {
+                    
+                    let now = new Date();
+                    parsedObj.createdAt = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+
                     renderTable(parsedObj);
                     this.value = '';
                     if(db) {
@@ -218,88 +256,229 @@
             const lines = text.split('\n');
             const results = { 'Inside Min Connection Time': [], 'Connection OK': [] };
             
-            let inboundMatch = text.match(/(VN\d+)\s+(\d{2}[A-Z]{3})\s+([A-Z]{3})\s+STD(\d{4})?(?:\s*ETD(\d{4}))?/);
-            let inboundFlight = inboundMatch ? inboundMatch[1] : "UNKNOWN";
-            let inboundDate = inboundMatch ? inboundMatch[2] : "";
-            let etaTime = (inboundMatch && inboundMatch[5]) ? inboundMatch[5] : ((inboundMatch && inboundMatch[4]) ? inboundMatch[4] : "");
-            if(etaTime.length === 4) etaTime = etaTime.substring(0,2) + ":" + etaTime.substring(2);
+            let inboundFlight = "UNKNOWN", inboundDate = "", etaTime = "", routing = "";
+            let hasJ = false, hasW = false, hasY = false;
+            let isNewFormatTable = text.includes("|Inside Min Connection Time") || text.includes("|Connection OK");
 
-            let routingMatch = text.match(/([A-Z]{3}-[A-Z]{3})\(VN/);
-            let routing = routingMatch ? routingMatch[1] : "";
+            let jfeFlightMatch = text.match(/([A-Z0-9]{2,3}\d{1,4}[A-Za-z]?)\s+(\d{2}[A-Z]{3})\s+STD:/i);
+            if (jfeFlightMatch) {
+                inboundFlight = jfeFlightMatch[1].toUpperCase();
+                inboundDate = jfeFlightMatch[2];
+                
+                let etaMatch = text.match(/Scheduled:\s+(\d{2}:\d{2})\s+(\d{2}:\d{2})/);
+                if (etaMatch) etaTime = etaMatch[2];
+                
+                let routeMatch = text.match(/Airport:\s+([A-Z]{3})\s+([A-Z]{3})/);
+                if (routeMatch) routing = `${routeMatch[1]}-${routeMatch[2]}`;
+            } else {
+                let inboundMatch = text.match(/([A-Z0-9]{2}\d+[A-Za-z]?)\s+(\d{2}[A-Z]{3})\s+([A-Z]{3})\s+STD(\d{4})?/i);
+                if(inboundMatch) {
+                    inboundFlight = inboundMatch[1].toUpperCase();
+                    inboundDate = inboundMatch[2];
+                    etaTime = ""; 
+                }
+                let routingMatch = text.match(/([A-Z]{3}-[A-Z]{3})\([A-Z0-9]{2}/i);
+                if(routingMatch) routing = routingMatch[1];
+            }
 
             let currentSection = '';
-            let hasJ = false, hasW = false, hasY = false;
 
-            for(let i=0; i<lines.length; i++) {
-                let line = lines[i];
-                if(line.includes("FLTNR") && line.includes("DEST")) {
-                    let headerPart = line.substring(line.indexOf("CONX"));
-                    hasJ = headerPart.includes("J");
-                    hasW = headerPart.includes("W");
-                    hasY = headerPart.includes("Y");
-                    continue;
-                }
-                if(line.includes("POTENTIALLY MISSED")) { currentSection = 'Inside Min Connection Time'; continue; }
-                if(line.includes("OUTBOUND CONNECTION") && !line.includes("POTENTIALLY")) { currentSection = 'Connection OK'; continue; }
+            if (isNewFormatTable) {
+                let conn_idx=-1, std_idx=-1, time_idx=-1, bag_idx=-1, dest_idx=-1, term_idx=-1, gate_idx=-1;
+                let b_j_idx=-1, b_w_idx=-1, b_y_idx=-1, b_tot_idx=-1;
+                let a_j_idx=-1, a_w_idx=-1, a_y_idx=-1, a_tot_idx=-1;
 
-                let parts = line.split(/(\d{2}H\d{2})/);
-                if(parts.length >= 3 && currentSection) {
-                    let leftPart = parts[0].trim().split(/\s+/);
-                    let flt = leftPart[0];
-                    let fltStd = leftPart[1];
-                    let dest = leftPart.slice(2).join(" "); 
-                    let conx = parts[1];
-                    let numStr = parts[2].trim().split(/\s+/).filter(x => x !== "").map(Number);
+                for(let i=0; i<lines.length; i++) {
+                    let line = lines[i];
                     
-                    let term = "", gate = "";
-                    if(i+1 < lines.length && lines[i+1].includes("TER:")) {
-                        let tgMatch = lines[i+1].match(/TER:\s*(\w*)\s*GATE:\s*(\w*)/);
-                        if(tgMatch) { term = tgMatch[1] || ""; gate = tgMatch[2] || ""; }
+                    if (line.includes("|Connection") && line.includes("|ATD")) {
+                        let cols = line.split("|").map(s => s.trim());
+                        conn_idx = cols.indexOf("Connection");
+                        std_idx = cols.indexOf("STD");
+                        time_idx = cols.indexOf("Time");
+                        bag_idx = cols.indexOf("Bags");
+                        dest_idx = cols.indexOf("Dest.");
+                        term_idx = cols.indexOf("Term.");
+                        gate_idx = cols.indexOf("Gate");
+
+                        let totals = [];
+                        cols.forEach((c, idx) => { if(c === "Total") totals.push(idx); });
+                        if(totals.length >= 2) {
+                            b_tot_idx = totals[0];
+                            a_tot_idx = totals[1];
+                            for(let k = time_idx + 1; k < b_tot_idx; k++) {
+                                if(cols[k] === "J") { b_j_idx = k; hasJ = true; }
+                                if(cols[k] === "W") { b_w_idx = k; hasW = true; }
+                                if(cols[k] === "Y") { b_y_idx = k; hasY = true; }
+                            }
+                            for(let k = b_tot_idx + 1; k < a_tot_idx; k++) {
+                                if(cols[k] === "J") a_j_idx = k;
+                                if(cols[k] === "W") a_w_idx = k;
+                                if(cols[k] === "Y") a_y_idx = k;
+                            }
+                        }
+                        continue;
                     }
 
-                    let idx = 0;
-                    let b_j = 0, b_w = 0, b_y = 0, a_j = 0, a_w = 0, a_y = 0;
-                    
-                    if(hasJ) b_j = numStr[idx++] || 0;
-                    if(hasW) b_w = numStr[idx++] || 0;
-                    if(hasY) b_y = numStr[idx++] || 0;
-                    if(hasJ) a_j = numStr[idx++] || 0;
-                    if(hasW) a_w = numStr[idx++] || 0;
-                    if(hasY) a_y = numStr[idx++] || 0;
-                    
-                    let bags = numStr[idx] || 0;
-                    let totalBooked = b_j + b_w + b_y;
-                    let totalAccepted = a_j + a_w + a_y;
+                    if(line.includes("|Inside Min Connection Time")) { currentSection = 'Inside Min Connection Time'; continue; }
+                    if(line.includes("|Connection OK")) { currentSection = 'Connection OK'; continue; }
 
-                    if(totalBooked > 0 || totalAccepted > 0) { 
-                        results[currentSection].push({ flt, fltStd, dest, conx, b_j, b_w, b_y, totalBooked, a_j, a_w, a_y, totalAccepted, bags, term, gate });
+                    if (currentSection && line.trim().startsWith("|") && line.match(/\|\d+\s*\|/)) {
+                        let cols = line.split("|").map(s => s.trim());
+                        if (cols.length < (gate_idx !== -1 ? gate_idx : cols.length - 1)) continue;
+
+                        let connStr = cols[conn_idx] || ""; 
+                        
+                        let fltMatch = connStr.match(/^([A-Z0-9]{2,3}\d{1,4}[A-Za-z]?)\s*([A-Z]{3}-[A-Z]{3}.*)$/i);
+                        if (!fltMatch) { fltMatch = connStr.match(/^([A-Z0-9]{2,3}\d{1,4}[A-Za-z]?)(.*)/i); }
+                        
+                        let flt = fltMatch ? fltMatch[1].toUpperCase() : connStr;
+                        let destRaw = fltMatch && fltMatch[2] ? fltMatch[2].trim() : ""; 
+                        
+                        let fltStd = cols[std_idx] || "";
+                        fltStd = fltStd.replace(":", ""); 
+                        
+                        let conx = cols[time_idx] || ""; 
+                        
+                        let b_j = b_j_idx !== -1 ? parseInt(cols[b_j_idx]) || 0 : 0;
+                        let b_w = b_w_idx !== -1 ? parseInt(cols[b_w_idx]) || 0 : 0;
+                        let b_y = b_y_idx !== -1 ? parseInt(cols[b_y_idx]) || 0 : 0;
+                        let totalBooked = b_tot_idx !== -1 ? parseInt(cols[b_tot_idx]) || 0 : 0;
+                        
+                        let a_j = a_j_idx !== -1 ? parseInt(cols[a_j_idx]) || 0 : 0;
+                        let a_w = a_w_idx !== -1 ? parseInt(cols[a_w_idx]) || 0 : 0;
+                        let a_y = a_y_idx !== -1 ? parseInt(cols[a_y_idx]) || 0 : 0;
+                        let totalAccepted = a_tot_idx !== -1 ? parseInt(cols[a_tot_idx]) || 0 : 0;
+
+                        let bags = bag_idx !== -1 ? parseInt(cols[bag_idx]) || 0 : 0;
+                        let extraDest = dest_idx !== -1 ? cols[dest_idx] : ""; 
+                        let dest = destRaw + (extraDest ? " " + extraDest : ""); 
+                        let term = term_idx !== -1 ? cols[term_idx] : "";
+                        let gate = gate_idx !== -1 ? cols[gate_idx] : "";
+
+                        if(totalBooked > 0 || totalAccepted > 0) {
+                            results[currentSection].push({ flt, fltStd, dest, conx, b_j, b_w, b_y, totalBooked, a_j, a_w, a_y, totalAccepted, bags, term, gate });
+                        }
+                    }
+                }
+            } else {
+                for(let i=0; i<lines.length; i++) {
+                    let line = lines[i];
+                    if(line.includes("FLTNR") && line.includes("DEST")) {
+                        let headerPart = line.substring(line.indexOf("CONX"));
+                        hasJ = headerPart.includes("J");
+                        hasW = headerPart.includes("W");
+                        hasY = headerPart.includes("Y");
+                        continue;
+                    }
+                    if(line.includes("POTENTIALLY MISSED")) { currentSection = 'Inside Min Connection Time'; continue; }
+                    if(line.includes("OUTBOUND CONNECTION") && !line.includes("POTENTIALLY")) { currentSection = 'Connection OK'; continue; }
+
+                    let parts = line.split(/(\d{2}H\d{2})/);
+                    if(parts.length >= 3 && currentSection) {
+                        let leftPart = parts[0].trim().split(/\s+/);
+                        let flt = leftPart[0];
+                        let fltStd = leftPart[1];
+                        let dest = leftPart.slice(2).join(" "); 
+                        let conx = parts[1];
+                        let numStr = parts[2].trim().split(/\s+/).filter(x => x !== "").map(Number);
+                        
+                        let term = "", gate = "";
+                        if(i+1 < lines.length && lines[i+1].includes("TER:")) {
+                            let tgMatch = lines[i+1].match(/TER:\s*(\w*)\s*GATE:\s*(\w*)/);
+                            if(tgMatch) { term = tgMatch[1] || ""; gate = tgMatch[2] || ""; }
+                        }
+
+                        let idx = 0;
+                        let b_j = 0, b_w = 0, b_y = 0, a_j = 0, a_w = 0, a_y = 0;
+                        
+                        if(hasJ) b_j = numStr[idx++] || 0;
+                        if(hasW) b_w = numStr[idx++] || 0;
+                        if(hasY) b_y = numStr[idx++] || 0;
+                        if(hasJ) a_j = numStr[idx++] || 0;
+                        if(hasW) a_w = numStr[idx++] || 0;
+                        if(hasY) a_y = numStr[idx++] || 0;
+                        
+                        let bags = numStr[idx] || 0;
+                        let totalBooked = b_j + b_w + b_y;
+                        let totalAccepted = a_j + a_w + a_y;
+
+                        if(totalBooked > 0 || totalAccepted > 0) { 
+                            results[currentSection].push({ flt, fltStd, dest, conx, b_j, b_w, b_y, totalBooked, a_j, a_w, a_y, totalAccepted, bags, term, gate });
+                        }
                     }
                 }
             }
-            return { inboundFlight, inboundDate, etaTime, routing, results };
+            return { inboundFlight, inboundDate, etaTime, routing, results, hasJ, hasW, hasY };
         }
 
         function renderTable(dataObj) {
             let container = document.getElementById('report-container');
             let results = dataObj.results;
             
+            // XÁC ĐỊNH ĐIỂM HẠ CÁNH THỰC TẾ LÀM ĐIỂM KHỞI HÀNH NỐI CHUYẾN
+            let transitPort = dataObj.routing && dataObj.routing.includes('-') ? dataObj.routing.split('-')[1] : "SGN";
+            if (!transitPort) transitPort = "SGN";
+            
+            let etaDisplay = dataObj.etaTime ? ` | ETA: ${dataObj.etaTime}` : '';
+            let etaCopy = dataObj.etaTime ? `/ETA ${dataObj.etaTime}` : '';
+            let routingText = dataObj.routing ? `/${dataObj.routing}` : '';
+            let createdDisplay = dataObj.createdAt ? `<span class="bg-gray-100 text-gray-600 px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-sm font-semibold w-max border"><i class="fa-solid fa-clock mr-1"></i> Tạo: ${dataObj.createdAt}</span>` : '';
+            
             let summaryHTML = "";
             if (results['Inside Min Connection Time'] && results['Inside Min Connection Time'].length > 0) {
-                let reportLines = results['Inside Min Connection Time'].map(r => 
-                    `- (B:${r.totalBooked} / A:${r.totalAccepted}) pax -> ${r.flt} ETD ${r.fltStd.substring(0,2)}:${r.fltStd.substring(2)}`
-                );
+                let reportLines = results['Inside Min Connection Time'].map(r => {
+                    let paxCount = r.totalAccepted > 0 ? r.totalAccepted : r.totalBooked;
+                    
+                    let rawDest = r.dest.trim().split(' ')[0];
+                    let destStr = rawDest;
+                    
+                    if (/^[A-Z]{3}$/.test(rawDest)) {
+                        destStr = transitPort + "-" + rawDest;
+                    } else if (rawDest.includes('-')) {
+                        let parts = rawDest.split('-');
+                        destStr = parts[parts.length-2].slice(-3) + "-" + parts[parts.length-1].slice(0,3);
+                    }
+                    
+                    let etdFormat = r.fltStd.substring(0,2) + ":" + r.fltStd.substring(2);
+                    return `- ${paxCount}pax/${r.bags}pcs nối chuyến ${r.flt}/${destStr}/ETD ${etdFormat}`;
+                });
+                
+                let textToCopy = `Khách nối chuyến ngắn:\n${dataObj.inboundFlight}${routingText}${etaCopy}:\n${reportLines.join('\n')}`;
+
                 summaryHTML = `
-                <div class="bg-yellow-100 border-l-4 border-yellow-500 p-2 md:p-4 mb-2 md:mb-4 text-yellow-900 shadow-sm rounded">
-                    <h3 class="font-bold text-sm md:text-lg mb-1">CẢNH BÁO: KHÁCH NỐI CHUYẾN NGẮN</h3>
-                    <div class="whitespace-pre-line leading-relaxed font-mono text-xs md:text-base">Chuyến đến ${dataObj.inboundFlight} ${dataObj.routing ? '('+dataObj.routing+')' : ''} ETA ${dataObj.etaTime}:
+                <div class="bg-yellow-100 border-l-4 border-yellow-500 p-3 md:p-4 mb-3 md:mb-4 text-yellow-900 shadow-sm rounded relative group">
+                    <button onclick="copyReport(this)" data-clipboard="${encodeURIComponent(textToCopy)}" class="absolute top-2 right-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] md:text-sm shadow flex items-center transition-colors">
+                        <i class="fa-regular fa-copy mr-1.5"></i> Copy
+                    </button>
+                    <h3 class="font-bold text-sm md:text-lg mb-1">Báo cáo:</h3>
+                    <div class="whitespace-pre-line leading-relaxed font-mono text-xs md:text-base pr-20">Khách nối chuyến ngắn:
+${dataObj.inboundFlight}${routingText}${etaCopy}:
 ${reportLines.join('\n')}</div>
                 </div>`;
             }
 
+            let catCols = (dataObj.hasJ?1:0) + (dataObj.hasW?1:0) + (dataObj.hasY?1:0) + 1; 
+
+            let bookedHeaderStr = "";
+            if(dataObj.hasJ) bookedHeaderStr += "J ";
+            if(dataObj.hasW) bookedHeaderStr += "W ";
+            if(dataObj.hasY) bookedHeaderStr += "Y ";
+            bookedHeaderStr += `<span class="font-bold">Total</span>`;
+
+            let accHeaders = "";
+            if(dataObj.hasJ) accHeaders += `<th class="border col-min">J</th>`;
+            if(dataObj.hasW) accHeaders += `<th class="border col-min">W</th>`;
+            if(dataObj.hasY) accHeaders += `<th class="border col-min">Y</th>`;
+            accHeaders += `<th class="border col-min font-bold">Total</th>`;
+
             let tableHTML = `
-            <div class="mb-2 md:mb-4 flex flex-col md:flex-row md:items-center justify-between gap-1 md:gap-2">
+            <div class="mb-2 md:mb-4 flex flex-col md:flex-row md:items-center justify-between gap-2">
                 <h2 class="text-base md:text-xl font-bold text-blue-800"><i class="fa-solid fa-plane-arrival mr-1"></i>${dataObj.inboundFlight} ${dataObj.routing ? `[${dataObj.routing}]` : ''}</h2>
-                <span class="bg-blue-100 text-blue-800 px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-sm font-semibold w-max"><i class="fa-regular fa-calendar mr-1"></i> ${dataObj.inboundDate} | ETA: ${dataObj.etaTime}</span>
+                <div class="flex flex-col md:flex-row gap-1">
+                    <span class="bg-blue-100 text-blue-800 px-2 py-0.5 md:px-3 md:py-1 rounded-full text-[10px] md:text-sm font-semibold w-max"><i class="fa-regular fa-calendar mr-1"></i> ${dataObj.inboundDate}${etaDisplay}</span>
+                    ${createdDisplay}
+                </div>
             </div>
             
             <div class="text-[10px] md:text-xs text-blue-600 italic mb-1 md:hidden animate-pulse"><i class="fa-solid fa-arrows-left-right mr-1"></i> Vuốt ngang để xem bảng</div>
@@ -308,10 +487,10 @@ ${reportLines.join('\n')}</div>
                 <table class="w-full border-collapse bg-white shadow-sm min-w-[650px]">
                     <thead class="header-bg">
                         <tr>
-                            <th rowspan="2" class="border col-min">Connection</th><th rowspan="2" class="border col-min">ATD</th><th rowspan="2" class="border col-min">ETD</th><th rowspan="2" class="border col-min">STD</th><th rowspan="2" class="border col-min">Act<br>Conx</th><th colspan="4" class="border text-center px-2">Customer Categories</th><th rowspan="2" class="border col-min">Final<br>Bags</th><th rowspan="2" class="border col-min">Dest.</th><th rowspan="2" class="border col-min">Term.</th><th rowspan="2" class="border col-min">Gate</th>
+                            <th rowspan="2" class="border col-min">Connection</th><th rowspan="2" class="border col-min">ATD</th><th rowspan="2" class="border col-min">ETD</th><th rowspan="2" class="border col-min">STD</th><th rowspan="2" class="border col-min">Act<br>Conx</th><th colspan="${catCols + 1}" class="border text-center px-2">Customer Categories</th><th rowspan="2" class="border col-min">Final<br>Bags</th><th rowspan="2" class="border col-min">Dest.</th><th rowspan="2" class="border col-min">Term.</th><th rowspan="2" class="border col-min">Gate</th>
                         </tr>
-                        <tr><th class="border col-min text-gray-500">Booked</th><th colspan="3" class="border col-min">Accepted</th></tr>
-                        <tr><th class="border"></th><th class="border"></th><th class="border"></th><th class="border"></th><th class="border"></th><th class="border col-min text-gray-500">J W Y <span class="font-bold">Total</span></th><th class="border col-min">J</th><th class="border col-min">W</th><th class="border col-min">Y</th><th class="border col-min font-bold">Total</th><th class="border"></th><th class="border"></th><th class="border"></th><th class="border"></th></tr>
+                        <tr><th class="border col-min text-gray-500">Booked</th><th colspan="${catCols}" class="border col-min">Accepted</th></tr>
+                        <tr><th class="border"></th><th class="border"></th><th class="border"></th><th class="border"></th><th class="border"></th><th class="border col-min text-gray-500">${bookedHeaderStr}</th>${accHeaders}<th class="border"></th><th class="border"></th><th class="border"></th><th class="border"></th></tr>
                     </thead>
                     <tbody>`;
 
@@ -319,25 +498,43 @@ ${reportLines.join('\n')}</div>
             ['Inside Min Connection Time', 'Connection OK'].forEach(section => {
                 if(results[section] && results[section].length > 0) {
                     let sClass = (section === 'Inside Min Connection Time') ? 'danger-bg' : 'section-header';
-                    tableHTML += `<tr><td colspan="14" class="${sClass}">${section}</td></tr>`;
+                    tableHTML += `<tr><td colspan="${5 + catCols + 1 + 4}" class="${sClass}">${section}</td></tr>`;
                     results[section].forEach(row => {
                         if(rowCount >= 10) return; 
                         rowCount++;
                         let rClass = (section === 'Inside Min Connection Time') ? 'bg-red-50 text-red-700 font-semibold' : '';
-                        let displayDest = row.dest.split(' ')[0]; 
+                        
+                        let rawDest = row.dest.trim().split(' ')[0];
+                        let finalDestString = rawDest;
+                        
+                        if (/^[A-Z]{3}$/.test(rawDest)) {
+                            finalDestString = transitPort + "-" + rawDest;
+                        } else if (rawDest.includes('-')) {
+                            let parts = rawDest.split('-');
+                            finalDestString = parts[parts.length-2].slice(-3) + "-" + parts[parts.length-1].slice(0,3);
+                        }
+
                         let extraDest = row.dest.split(' ').length > 1 ? row.dest.split(' ')[1] : '';
+                        
+                        let bookedVals = "";
+                        if(dataObj.hasJ) bookedVals += row.b_j + " ";
+                        if(dataObj.hasW) bookedVals += row.b_w + " ";
+                        if(dataObj.hasY) bookedVals += row.b_y + " ";
+                        
+                        let accVals = "";
+                        if(dataObj.hasJ) accVals += `<td class="col-min">${row.a_j}</td>`;
+                        if(dataObj.hasW) accVals += `<td class="col-min">${row.a_w}</td>`;
+                        if(dataObj.hasY) accVals += `<td class="col-min">${row.a_y}</td>`;
                         
                         tableHTML += `
                         <tr class="${rClass} hover:bg-gray-50">
-                            <td class="text-left col-min">${rowCount} &nbsp; ${row.flt} &nbsp; SGN-${displayDest}</td>
+                            <td class="text-left col-min">${rowCount} &nbsp; ${row.flt} &nbsp; ${finalDestString}</td>
                             <td class="col-min"></td>
                             <td class="col-min"></td>
                             <td class="col-min">${row.fltStd.substring(0,2)}:${row.fltStd.substring(2)}</td>
                             <td class="col-min">${row.conx.toLowerCase()}</td>
-                            <td class="col-min text-gray-400 text-[10px] md:text-xs">${row.b_j} ${row.b_w} ${row.b_y} &nbsp;<span class="font-bold text-gray-600">${row.totalBooked}</span></td>
-                            <td class="col-min">${row.a_j}</td>
-                            <td class="col-min">${row.a_w}</td>
-                            <td class="col-min">${row.a_y}</td>
+                            <td class="col-min text-gray-400 text-[10px] md:text-xs">${bookedVals}&nbsp;<span class="font-bold text-gray-600">${row.totalBooked}</span></td>
+                            ${accVals}
                             <td class="col-min font-bold">${row.totalAccepted}</td>
                             <td class="col-min font-bold text-blue-600">${row.bags}</td>
                             <td class="col-min text-[10px] md:text-xs">${extraDest}</td>
@@ -347,6 +544,11 @@ ${reportLines.join('\n')}</div>
                     });
                 }
             });
+
+            if (rowCount === 0) {
+                tableHTML += `<tr><td colspan="${5 + catCols + 1 + 4}" class="p-6 text-gray-500 font-semibold italic text-center bg-gray-50">✅ Chuyến bay này không có khách nối chuyến (0 pax).</td></tr>`;
+            }
+
             tableHTML += `</tbody></table></div>`;
             container.innerHTML = summaryHTML + tableHTML;
         }
@@ -362,8 +564,10 @@ ${reportLines.join('\n')}</div>
                 snapshot.forEach(docSnap => {
                     let data = docSnap.data();
                     let div = document.createElement('div');
+                    let etaDisplay = data.etaTime ? ` &nbsp;|&nbsp; ETA: <span class="font-semibold text-gray-700">${data.etaTime}</span>` : '';
+                    let createdDisplay = data.createdAt ? `<div class="mt-1 text-[9px] md:text-[10px] text-gray-400"><i class="fa-solid fa-pen-to-square mr-1"></i>Tạo: ${data.createdAt}</div>` : '';
                     div.className = "p-2 md:p-3 bg-white border rounded cursor-pointer hover:bg-blue-50 transition-colors shadow-sm flex justify-between items-center group";
-                    div.innerHTML = `<div class="flex-1 overflow-hidden" onclick='viewReport(${JSON.stringify(data)})'><div class="font-bold text-blue-800 text-[11px] md:text-sm truncate">${data.inboundFlight} ${data.routing ? `[${data.routing}]` : ''}</div><div class="text-[10px] md:text-xs text-gray-500 mt-1"><i class="fa-regular fa-calendar-days mr-1"></i>${data.inboundDate} &nbsp;|&nbsp; ETA: <span class="font-semibold text-gray-700">${data.etaTime}</span></div></div><button onclick="deleteReport('${docSnap.id}')" class="text-gray-300 hover:text-red-500 transition-colors ml-2 p-1 md:p-2"><i class="fa-solid fa-trash"></i></button>`;
+                    div.innerHTML = `<div class="flex-1 overflow-hidden" onclick='viewReport(${JSON.stringify(data)})'><div class="font-bold text-blue-800 text-[11px] md:text-sm truncate">${data.inboundFlight} ${data.routing ? `[${data.routing}]` : ''}</div><div class="text-[10px] md:text-xs text-gray-500 mt-1"><i class="fa-regular fa-calendar-days mr-1"></i>${data.inboundDate}${etaDisplay}${createdDisplay}</div></div><button onclick="deleteReport('${docSnap.id}')" class="text-gray-300 hover:text-red-500 transition-colors ml-2 p-1 md:p-2"><i class="fa-solid fa-trash"></i></button>`;
                     listDiv.appendChild(div);
                 });
             } catch (err) {
