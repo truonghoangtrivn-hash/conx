@@ -38,7 +38,6 @@
         }
         .text-left { text-align: left !important; }
         
-        /* Hiệu ứng rung nhẹ khi nhập sai mật khẩu */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-5px); }
@@ -49,37 +48,32 @@
 </head>
 <body class="bg-gray-100 text-gray-800 h-screen overflow-hidden flex flex-col">
 
-    <!-- MÀN HÌNH KHÓA BẢO VỆ MẬT KHẨU -->
+    <!-- MÀN HÌNH KHÓA -->
     <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-50 flex items-center justify-center">
         <div class="bg-white p-8 rounded-lg shadow-2xl w-96 text-center">
             <div class="text-4xl text-blue-600 mb-4"><i class="fa-solid fa-plane-lock"></i></div>
             <h2 class="text-2xl font-bold mb-2">Hệ Thống Nội Bộ</h2>
             <p class="text-sm text-gray-500 mb-6">Vui lòng nhập mã PIN để truy cập</p>
-            
             <input type="password" id="password-input" maxlength="6" autofocus
-                class="w-full border-2 border-gray-300 p-3 text-center text-3xl tracking-[1em] rounded-lg focus:outline-none focus:border-blue-500 transition-colors font-mono" 
+                class="w-full border-2 border-gray-300 p-3 text-center text-3xl tracking-[1em] rounded-lg focus:outline-none focus:border-blue-500 font-mono" 
                 placeholder="••••••">
-                
             <p class="text-xs text-gray-400 mt-4">Hệ thống sẽ tự động đăng nhập khi nhập đủ 6 số.</p>
         </div>
     </div>
 
-    <!-- ỨNG DỤNG CHÍNH (Ẩn khi chưa đăng nhập) -->
+    <!-- ỨNG DỤNG CHÍNH -->
     <div id="main-app" class="hidden flex-col h-full w-full">
-        <!-- Header -->
         <header class="bg-white shadow z-10 p-4 flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">Trích xuất & Lưu trữ Chuyến bay</h1>
-                <p class="text-sm text-gray-500">Hệ thống xử lý và lưu trữ dữ liệu Oncarriage tự động (Đã kết nối Firebase).</p>
+                <p class="text-sm text-gray-500">Hệ thống xử lý và lưu trữ dữ liệu tự động (Đã kết nối Firebase 62823).</p>
             </div>
             <button id="logout-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded shadow text-sm font-semibold">
                 <i class="fa-solid fa-right-from-bracket mr-1"></i> Đăng xuất
             </button>
         </header>
 
-        <!-- Main Workspace -->
         <div class="flex flex-1 overflow-hidden">
-            <!-- Sidebar: Lịch sử xử lý -->
             <aside class="w-1/4 min-w-[280px] bg-white border-r flex flex-col h-full shadow-inner">
                 <div class="p-4 bg-gray-50 border-b font-bold text-gray-700 flex justify-between items-center">
                     <span><i class="fa-solid fa-clock-rotate-left mr-2"></i>Lịch sử lưu trữ</span>
@@ -89,365 +83,7 @@
                 </div>
             </aside>
 
-            <!-- Cột Phải: Xử lý và Báo cáo -->
             <main class="flex-1 overflow-y-auto p-6 bg-gray-100 flex flex-col items-center">
-                
                 <div class="w-full max-w-5xl">
-                    <!-- Khung Dán Dữ Liệu -->
                     <div class="bg-white p-4 rounded shadow-sm border border-blue-200 mb-6">
-                        <label class="block text-sm font-semibold text-blue-700 mb-2">Dán văn bản tổng hợp vào đây (Phần mềm tự phân tích, tự lưu và tự xóa khung):</label>
-                        <textarea id="data-input" rows="4" 
-                            class="w-full border-2 border-dashed border-blue-300 p-3 rounded text-sm font-mono focus:outline-none focus:border-blue-50 focus:bg-blue-50 transition-colors resize-none" 
-                            placeholder="Dán (Ctrl+V) dữ liệu ONCARRIAGE CUSTOMER SUMMARY vào đây..."></textarea>
-                    </div>
-
-                    <!-- Khung Báo Cáo Kết Quả -->
-                    <div id="report-container" class="w-full bg-white p-6 rounded shadow-lg overflow-x-auto min-h-[400px]">
-                        <div class="text-center text-gray-400 mt-20 italic">Chưa có dữ liệu hiển thị. Hãy dán text vào khung bên trên hoặc chọn lại một chuyến bay từ Lịch sử bên trái.</div>
-                    </div>
-                </div>
-
-            </main>
-        </div>
-    </div>
-
-    <!-- Kết nối Firebase Module -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp } 
-        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // CẤU HÌNH FIREBASE MỚI CỦA BẠN
-        const firebaseConfig = {
-            apiKey: "AIzaSyCz346rY9fXDixYI7i_R4EXms13Mrtmqq0",
-            authDomain: "conxasoc-62823.firebaseapp.com",
-            projectId: "conxasoc-62823",
-            storageBucket: "conxasoc-62823.firebasestorage.app",
-            messagingSenderId: "190029549849",
-            appId: "1:190029549849:web:138c3f7e1bb9efe6e8b588"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // --- HỆ THỐNG MẬT KHẨU TỰ ĐỘNG ---
-        const PIN = "140482";
-        const passInput = document.getElementById('password-input');
-        const loginOverlay = document.getElementById('login-overlay');
-        const mainApp = document.getElementById('main-app');
-
-        // Kiểm tra xem đã đăng nhập chưa
-        if (sessionStorage.getItem('auth_chuyenbay') === 'true') {
-            loginOverlay.classList.add('hidden');
-            mainApp.classList.remove('hidden');
-            mainApp.classList.add('flex');
-            loadHistory();
-        } else {
-            passInput.focus();
-        }
-
-        // Logic nhập PIN tự động kiểm tra
-        passInput.addEventListener('input', function() {
-            if (this.value.length === 6) {
-                if (this.value === PIN) {
-                    // Đúng Pass
-                    sessionStorage.setItem('auth_chuyenbay', 'true');
-                    loginOverlay.classList.add('hidden');
-                    mainApp.classList.remove('hidden');
-                    mainApp.classList.add('flex');
-                    loadHistory();
-                    this.value = ''; // xóa pass cho lần đăng xuất sau
-                } else {
-                    // Sai Pass
-                    this.classList.add('shake-err');
-                    setTimeout(() => {
-                        this.classList.remove('shake-err');
-                        this.value = ''; // Tự động xóa sạch để nhập lại
-                        this.focus();
-                    }, 400);
-                }
-            }
-        });
-
-        // Nút đăng xuất
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            sessionStorage.removeItem('auth_chuyenbay');
-            mainApp.classList.remove('flex');
-            mainApp.classList.add('hidden');
-            loginOverlay.classList.remove('hidden');
-            passInput.focus();
-        });
-
-
-        // --- LOGIC PHÂN TÍCH VÀ XỬ LÝ TEXT ---
-        const dataInput = document.getElementById('data-input');
-        
-        // Tự động quét dữ liệu mỗi khi dán (paste/input)
-        dataInput.addEventListener('input', async function() {
-            let text = this.value;
-            if(text.trim().length > 100 && text.includes("ONCARRIAGE")) {
-                let parsedObj = parseData(text);
-                
-                if(parsedObj && (parsedObj.results['Connection OK'].length > 0 || parsedObj.results['Inside Min Connection Time'].length > 0)) {
-                    // Xuất bảng ra ngay lập tức để xem
-                    renderTable(parsedObj);
-                    
-                    // Xóa khung input luôn để sẵn sàng paste chuyến tiếp theo
-                    this.value = '';
-                    
-                    // Lưu lên đám mây ngầm
-                    try {
-                        await addDoc(collection(db, 'reports'), {
-                            ...parsedObj,
-                            timestamp: serverTimestamp()
-                        });
-                        // Làm mới thanh lịch sử
-                        loadHistory();
-                    } catch (error) {
-                        alert("Lỗi khi lưu lên Firebase: " + error.message);
-                    }
-                }
-            }
-        });
-
-        // Hàm đọc cấu trúc chữ
-        function parseData(text) {
-            const lines = text.split('\n');
-            const results = { 'Inside Min Connection Time': [], 'Connection OK': [] };
-            
-            // Tìm chuyến đến và ETA
-            let inboundMatch = text.match(/(VN\d+)\s+(\d{2}[A-Z]{3})\s+([A-Z]{3})\s+STD(\d{4})?(?:\s*ETD(\d{4}))?/);
-            let inboundFlight = inboundMatch ? inboundMatch[1] : "UNKNOWN";
-            let inboundDate = inboundMatch ? inboundMatch[2] : "";
-            let etaTime = (inboundMatch && inboundMatch[5]) ? inboundMatch[5] : ((inboundMatch && inboundMatch[4]) ? inboundMatch[4] : "");
-            if(etaTime.length === 4) etaTime = etaTime.substring(0,2) + ":" + etaTime.substring(2);
-
-            // Tìm chặng bay Routing
-            let routingMatch = text.match(/([A-Z]{3}-[A-Z]{3})\(VN/);
-            let routing = routingMatch ? routingMatch[1] : "";
-
-            let currentSection = '';
-            let hasJ = false, hasW = false, hasY = false;
-
-            for(let i=0; i<lines.length; i++) {
-                let line = lines[i];
-
-                // Nhận diện cấu hình khoang
-                if(line.includes("FLTNR") && line.includes("DEST")) {
-                    let headerPart = line.substring(line.indexOf("CONX"));
-                    hasJ = headerPart.includes("J");
-                    hasW = headerPart.includes("W");
-                    hasY = headerPart.includes("Y");
-                    continue;
-                }
-
-                if(line.includes("POTENTIALLY MISSED")) { currentSection = 'Inside Min Connection Time'; continue; }
-                if(line.includes("OUTBOUND CONNECTION") && !line.includes("POTENTIALLY")) { currentSection = 'Connection OK'; continue; }
-
-                // Bóc tách dòng chuyến bay dựa theo CONX H format (01H00)
-                let parts = line.split(/(\d{2}H\d{2})/);
-                if(parts.length >= 3 && currentSection) {
-                    let leftPart = parts[0].trim().split(/\s+/);
-                    let flt = leftPart[0];
-                    let fltStd = leftPart[1];
-                    let dest = leftPart.slice(2).join(" "); // Gom các điểm đến lại
-                    let conx = parts[1];
-                    
-                    let numStr = parts[2].trim().split(/\s+/).filter(x => x !== "").map(Number);
-                    
-                    // Terminal & Gate
-                    let term = "", gate = "";
-                    if(i+1 < lines.length && lines[i+1].includes("TER:")) {
-                        let tgMatch = lines[i+1].match(/TER:\s*(\w*)\s*GATE:\s*(\w*)/);
-                        if(tgMatch) {
-                            term = tgMatch[1] || "";
-                            gate = tgMatch[2] || "";
-                        }
-                    }
-
-                    // Lấy số liệu khách ACCEPTED (Bỏ qua BOOKED)
-                    let offset = (hasJ ? 1 : 0) + (hasW ? 1 : 0) + (hasY ? 1 : 0);
-                    let accIdx = offset;
-                    
-                    let j = 0, w = 0, y = 0;
-                    if(hasJ) j = numStr[accIdx++] || 0;
-                    if(hasW) w = numStr[accIdx++] || 0;
-                    if(hasY) y = numStr[accIdx++] || 0;
-                    
-                    let bags = numStr[accIdx] || 0;
-                    let total = j + w + y;
-
-                    if(total > 0) {
-                        results[currentSection].push({ flt, fltStd, dest, conx, j, w, y, total, bags, term, gate });
-                    }
-                }
-            }
-
-            return { inboundFlight, inboundDate, etaTime, routing, results };
-        }
-
-        // --- HIỂN THỊ BẢNG KẾT QUẢ ---
-        function renderTable(dataObj) {
-            let container = document.getElementById('report-container');
-            let results = dataObj.results;
-            
-            // Xử lý Tổng kết Cảnh báo (Nối chuyến ngắn)
-            let summaryHTML = "";
-            if (results['Inside Min Connection Time'] && results['Inside Min Connection Time'].length > 0) {
-                let reportLines = results['Inside Min Connection Time'].map(r => 
-                    `- ${r.total}pax/${r.bags}pcs đi tiếp ${r.flt} ETD ${r.fltStd.substring(0,2)}:${r.fltStd.substring(2)}`
-                );
-                
-                summaryHTML = `
-                <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 mb-4 text-yellow-900 shadow-sm rounded">
-                    <h3 class="font-bold text-lg mb-1">CẢNH BÁO: KHÁCH NỐI CHUYẾN NGẮN</h3>
-                    <div class="whitespace-pre-line leading-relaxed font-mono">Chuyến đến ${dataObj.inboundFlight} ${dataObj.routing ? '('+dataObj.routing+')' : ''}
-ETA ${dataObj.etaTime}, có khách nối chuyến ngắn:
-${reportLines.join('\n')}</div>
-                </div>`;
-            }
-
-            // Sinh HTML Bảng với cấu trúc siêu gọn
-            let tableHTML = `
-            <div class="mb-4 flex items-center justify-between">
-                <h2 class="text-xl font-bold text-blue-800">
-                    <i class="fa-solid fa-plane-arrival mr-2"></i>${dataObj.inboundFlight} ${dataObj.routing ? `[${dataObj.routing}]` : ''}
-                </h2>
-                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
-                    <i class="fa-regular fa-calendar mr-1"></i> ${dataObj.inboundDate} | ETA: ${dataObj.etaTime}
-                </span>
-            </div>
-            
-            <table class="w-auto border-collapse bg-white shadow-sm">
-                <thead class="header-bg">
-                    <tr>
-                        <th rowspan="2" class="border col-min">Connection</th>
-                        <th rowspan="2" class="border col-min">ATD</th>
-                        <th rowspan="2" class="border col-min">ETD</th>
-                        <th rowspan="2" class="border col-min">STD</th>
-                        <th rowspan="2" class="border col-min">Actual<br>Connect<br>Time</th>
-                        <th colspan="4" class="border text-center px-4">Customer Categories</th>
-                        <th rowspan="2" class="border col-min">Final<br>Bags</th>
-                        <th rowspan="2" class="border col-min">Dest.</th>
-                        <th rowspan="2" class="border col-min">Term.</th>
-                        <th rowspan="2" class="border col-min">Gate</th>
-                    </tr>
-                    <tr>
-                        <th class="border col-min text-gray-400">Booked</th>
-                        <th colspan="3" class="border col-min">Accepted</th>
-                    </tr>
-                    <tr>
-                        <th class="border"></th>
-                        <th class="border"></th>
-                        <th class="border"></th>
-                        <th class="border"></th>
-                        <th class="border"></th>
-                        <th class="border col-min text-gray-400">J W Y Total</th>
-                        <th class="border col-min">J</th>
-                        <th class="border col-min">W</th>
-                        <th class="border col-min">Y</th>
-                        <th class="border col-min font-bold">Total</th>
-                        <th class="border"></th>
-                        <th class="border"></th>
-                        <th class="border"></th>
-                        <th class="border"></th>
-                    </tr>
-                </thead>
-                <tbody>
-            `;
-
-            let rowCount = 0;
-            ['Inside Min Connection Time', 'Connection OK'].forEach(section => {
-                if(results[section] && results[section].length > 0) {
-                    let sClass = (section === 'Inside Min Connection Time') ? 'danger-bg' : 'section-header';
-                    tableHTML += `<tr><td colspan="14" class="${sClass}">${section}</td></tr>`;
-
-                    results[section].forEach(row => {
-                        if(rowCount >= 10) return; // Giới hạn 10 dòng
-                        rowCount++;
-                        
-                        let rClass = (section === 'Inside Min Connection Time') ? 'bg-red-50 text-red-700 font-semibold' : '';
-                        let displayDest = row.dest.split(' ')[0]; // Rút gọn SGN-xxx
-                        let extraDest = row.dest.split(' ').length > 1 ? row.dest.split(' ')[1] : '';
-
-                        tableHTML += `
-                        <tr class="${rClass} hover:bg-gray-50">
-                            <td class="text-left col-min">${rowCount} &nbsp; ${row.flt} &nbsp; SGN-${displayDest}</td>
-                            <td class="col-min"></td>
-                            <td class="col-min"></td>
-                            <td class="col-min">${row.fltStd.substring(0,2)}:${row.fltStd.substring(2)}</td>
-                            <td class="col-min">${row.conx.toLowerCase()}</td>
-                            <td class="col-min text-gray-300">0 0 0 0</td>
-                            <td class="col-min">${row.j}</td>
-                            <td class="col-min">${row.w}</td>
-                            <td class="col-min">${row.y}</td>
-                            <td class="col-min font-bold">${row.total}</td>
-                            <td class="col-min font-bold">${row.bags}</td>
-                            <td class="col-min text-xs">${extraDest}</td>
-                            <td class="col-min">${row.term}</td>
-                            <td class="col-min">${row.gate}</td>
-                        </tr>
-                        `;
-                    });
-                }
-            });
-
-            tableHTML += `</tbody></table>`;
-            container.innerHTML = summaryHTML + tableHTML;
-        }
-
-        // --- CÁC HÀM FIREBASE (Lịch Sử) ---
-        async function loadHistory() {
-            const listDiv = document.getElementById('history-list');
-            listDiv.innerHTML = '<div class="text-center text-sm text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Đang tải...</div>';
-            
-            try {
-                const q = query(collection(db, 'reports'), orderBy('timestamp', 'desc'));
-                const snapshot = await getDocs(q);
-                
-                listDiv.innerHTML = '';
-                if(snapshot.empty) {
-                    listDiv.innerHTML = '<div class="text-center text-gray-400 text-sm mt-4">Chưa có lịch sử.</div>';
-                    return;
-                }
-
-                snapshot.forEach(docSnap => {
-                    let data = docSnap.data();
-                    
-                    let div = document.createElement('div');
-                    div.className = "p-3 bg-white border rounded cursor-pointer hover:bg-blue-50 transition-colors shadow-sm flex justify-between items-center group";
-                    
-                    div.innerHTML = `
-                        <div class="flex-1 overflow-hidden" onclick='viewReport(${JSON.stringify(data)})'>
-                            <div class="font-bold text-blue-800 text-sm truncate">
-                                ${data.inboundFlight} ${data.routing ? `[${data.routing}]` : ''}
-                            </div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                <i class="fa-regular fa-calendar-days mr-1"></i>${data.inboundDate} &nbsp;|&nbsp; ETA: <span class="font-semibold text-gray-700">${data.etaTime}</span>
-                            </div>
-                        </div>
-                        <button onclick="deleteReport('${docSnap.id}')" class="text-gray-300 hover:text-red-500 transition-colors ml-2 p-2">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    `;
-                    listDiv.appendChild(div);
-                });
-            } catch (err) {
-                listDiv.innerHTML = '<div class="text-center text-red-500 text-sm py-4">Lỗi tải dữ liệu. (Vui lòng kiểm tra lại Rule Firebase)</div>';
-            }
-        }
-
-        window.viewReport = function(data) {
-            renderTable(data);
-        }
-
-        window.deleteReport = async function(id) {
-            if(confirm("Bạn có chắc chắn muốn xóa báo cáo chuyến bay này khỏi lịch sử không?")) {
-                await deleteDoc(doc(db, 'reports', id));
-                loadHistory(); // Tải lại danh sách
-                document.getElementById('report-container').innerHTML = '<div class="text-center text-gray-400 mt-20 italic">Báo cáo đã bị xóa.</div>';
-            }
-        }
-    </script>
-</body>
-</html>
+                        <label class="block text-
