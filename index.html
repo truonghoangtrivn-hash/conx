@@ -45,9 +45,15 @@
                 <h1 class="text-2xl font-bold text-gray-800 truncate">Trích xuất Oncarriage</h1>
                 <p class="text-sm text-gray-500 truncate" id="db-status">Đang kết nối cơ sở dữ liệu...</p>
             </div>
-            <button class="logout-btn bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded shadow text-sm font-semibold flex-shrink-0">
-                <i class="fa-solid fa-right-from-bracket mr-1"></i> Đăng xuất
-            </button>
+            <div class="flex items-center gap-2">
+                <!-- Nút Làm mới cho PC -->
+                <button class="refresh-btn bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded shadow text-sm font-semibold flex-shrink-0">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> Làm mới
+                </button>
+                <button class="logout-btn bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded shadow text-sm font-semibold flex-shrink-0">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i> Đăng xuất
+                </button>
+            </div>
         </header>
 
         <!-- Khung làm việc chính -->
@@ -73,10 +79,17 @@
             <aside class="w-full h-1/2 md:h-full md:w-1/4 md:min-w-[280px] bg-white border-t-2 md:border-r flex flex-col shadow-inner order-2 md:order-1 border-gray-200 shrink-0">
                 <div class="p-2 md:p-4 bg-gray-50 border-b font-bold text-gray-700 flex justify-between items-center text-sm md:text-base">
                     <span><i class="fa-solid fa-clock-rotate-left mr-2"></i>Lịch sử lưu trữ</span>
-                    <!-- Nút đăng xuất (Chỉ hiển thị trên Mobile) -->
-                    <button class="logout-btn md:hidden bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded shadow text-xs font-semibold">
-                        <i class="fa-solid fa-right-from-bracket"></i> Thoát
-                    </button>
+                    
+                    <!-- Nút Tác vụ (Chỉ hiển thị trên Mobile) -->
+                    <div class="flex items-center gap-2 md:hidden">
+                        <!-- Nút Làm mới cho Mobile -->
+                        <button class="refresh-btn bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded shadow text-xs font-semibold">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                        <button class="logout-btn bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded shadow text-xs font-semibold">
+                            <i class="fa-solid fa-right-from-bracket"></i> Thoát
+                        </button>
+                    </div>
                 </div>
                 <div id="history-list" class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50">
                     <div class="text-center text-gray-400 text-xs md:text-sm mt-4 md:mt-10">Đang tải dữ liệu...</div>
@@ -152,7 +165,7 @@
             }
         });
 
-        // Gắn sự kiện đăng xuất cho tất cả các nút
+        // Gắn sự kiện ĐĂNG XUẤT
         document.querySelectorAll('.logout-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 sessionStorage.removeItem('auth_chuyenbay');
@@ -160,6 +173,23 @@
                 mainApp.classList.add('hidden');
                 loginOverlay.classList.remove('hidden');
                 passInput.focus();
+            });
+        });
+
+        // Gắn sự kiện LÀM MỚI (Refresh)
+        document.querySelectorAll('.refresh-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Tạo hiệu ứng xoay cho icon
+                let icon = btn.querySelector('i');
+                icon.classList.add('fa-spin');
+                setTimeout(() => icon.classList.remove('fa-spin'), 500);
+
+                // Reset các khung nhập và hiển thị
+                document.getElementById('data-input').value = '';
+                document.getElementById('report-container').innerHTML = '<div class="text-center text-gray-400 mt-10 md:mt-20 italic text-sm md:text-base">Đã làm mới. Chưa có dữ liệu hiển thị.</div>';
+                
+                // Tải lại lịch sử từ đám mây
+                if(db) loadHistory();
             });
         });
 
